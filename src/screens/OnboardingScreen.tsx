@@ -6,6 +6,7 @@ import {
 import { Image } from 'expo-image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAM_TILE_SIZE = (SCREEN_WIDTH - 48) / 4; // 4 columns with padding
@@ -99,6 +100,7 @@ function ProgressBar({ step }: { step: Step }) {
 }
 
 export default function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('welcome');
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
@@ -141,22 +143,19 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
   }, [teams]);
 
   const handleComplete = async () => {
+    if (!user) return;
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) return;
-
       // Save selected teams to profile topic_slugs
       await supabase
         .from('profiles')
-        .upsert({ user_id: userId, topic_slugs: selectedTeams }, { onConflict: 'user_id' });
+        .upsert({ user_id: user.id, topic_slugs: selectedTeams }, { onConflict: 'user_id' });
 
       // Save followed shows to user_library
       if (followedShows.length > 0) {
         await supabase.from('user_library').insert(
           followedShows.map(showId => ({
-            user_id: userId,
+            user_id: user.id,
             show_id: showId,
             item_type: 'follow',
           }))

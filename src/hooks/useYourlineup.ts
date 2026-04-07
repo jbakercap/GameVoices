@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
- 
+import { useAuth } from '../contexts/AuthContext';
+
 interface LineupEpisode {
   id: string;
   episodeId: string;
@@ -14,14 +15,15 @@ interface LineupEpisode {
   progress: number;
   time_remaining: number;
 }
- 
+
 export function useYourLineup() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['your-lineup'],
+    queryKey: ['your-lineup', user?.id],
     queryFn: async (): Promise<LineupEpisode[]> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return [];
- 
+      if (!user) return [];
+
       const { data, error } = await supabase
         .from('user_playback')
         .select(`
@@ -40,14 +42,14 @@ export function useYourLineup() {
             shows(id, title)
           )
         `)
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('completed', false)
         .order('updated_at', { ascending: false })
         .limit(10);
- 
+
       if (error) throw error;
       if (!data) return [];
- 
+
       return data
         .filter((row: any) => row.episodes)
         .map((row: any) => {

@@ -1,21 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
-// Remove the FollowedPlayer interface definition, replace with:
 export type { FollowedPlayer } from '../types/player';
 import type { FollowedPlayer } from '../types/player';
 
 export function useFollowedPlayers() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['followedPlayers'],
+    queryKey: ['followedPlayers', user?.id],
     queryFn: async (): Promise<FollowedPlayer[]> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return [];
+      if (!user) return [];
 
       const { data: libraryData, error: libraryError } = await supabase
         .from('user_library')
         .select('player_id, created_at')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('item_type', 'follow_player')
         .not('player_id', 'is', null);
 

@@ -21,6 +21,7 @@
     "expo-crypto": "~55.0.9",
     "expo-image": "~55.0.6",
     "expo-status-bar": "~55.0.4",
+    "expo-video": "~55.0.13",
     "expo-web-browser": "~55.0.9",
     "react": "19.2.0",
     "react-native": "0.83.2",
@@ -33,5 +34,5 @@
     "@types/react": "~19.2.2",
     "typescript": "~5.9.2"
   },
-  "private": true 
+  "private": true
 }

@@ -2,55 +2,38 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from './src/lib/supabase';
-import { Session } from '@supabase/supabase-js';
-import AuthScreen from './src/screens/AuthScreen';
-import HomeScreen from './src/screens/HomeScreen';
-import BrowseScreen from './src/screens/BrowseScreen';
-import RosterScreen from './src/screens/RosterScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import StoryDetailScreen from './src/screens/StoryDetailScreen';
-import PlayerDetailScreen from './src/screens/PlayerDetailScreen';
 import TrackPlayer from 'react-native-track-player';
-import { PlayerProvider } from './src/contexts/PlayerContext';
+import { View, Text, Modal } from 'react-native';
+
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
 import MiniPlayer from './src/components/MiniPlayer';
 import FullPlayerScreen from './src/screens/FullPlayerScreen';
-import { View, Text, Modal } from 'react-native';
-import { usePlayer } from './src/contexts/PlayerContext';
+import AuthScreen from './src/screens/AuthScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import BrowseScreen from './src/screens/BrowseScreen';
 import SearchScreen from './src/screens/SearchScreen';
+import RosterScreen from './src/screens/RosterScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import LibraryScreen from './src/screens/LibraryScreen';
+import WatchScreen from './src/screens/WatchScreen';
+import StoryDetailScreen from './src/screens/StoryDetailScreen';
+import PlayerDetailScreen from './src/screens/PlayerDetailScreen';
+import ShowScreen from './src/screens/ShowScreen';
+import EpisodeScreen from './src/screens/EpisodeScreen';
+import TeamScreen from './src/screens/TeamScreen';
+import PersonScreen from './src/screens/PersonScreen';
+import PlaylistScreen from './src/screens/PlaylistScreen';
+import SubmitShowScreen from './src/screens/SubmitShowScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const queryClient = new QueryClient();
-
-function MainApp({ onSignOut }: { onSignOut: () => void }) {
-  const { isFullPlayerOpen, openFullPlayer, closeFullPlayer } = usePlayer();
-
-  return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Tabs" component={TabNavigator} />
-        <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
-        <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
-      </Stack.Navigator>
-      <MiniPlayer onPress={openFullPlayer} />
-      <Modal 
-        visible={isFullPlayerOpen} 
-        animationType="slide" 
-        presentationStyle="pageSheet"
-        onRequestClose={closeFullPlayer}
-      >
-        <FullPlayerScreen onClose={closeFullPlayer} />
-      </Modal>
-    </NavigationContainer>
-  );
-}
 
 function TabNavigator({ navigation }: any) {
   return (
@@ -64,6 +47,8 @@ function TabNavigator({ navigation }: any) {
           Home: 'home',
           Browse: 'compass-outline',
           Search: 'search-outline',
+          Watch: 'play-circle-outline',
+          Library: 'bookmark-outline',
           'My Roster': 'people-outline',
           Profile: 'person-outline',
         };
@@ -79,52 +64,47 @@ function TabNavigator({ navigation }: any) {
         name="Search"
         children={() => <SearchScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
       />
+      <Tab.Screen name="Watch" component={WatchScreen} />
+      <Tab.Screen name="Library" component={LibraryScreen} />
       <Tab.Screen name="My Roster" component={RosterScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
 
-export default function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+function MainApp() {
+  const { isFullPlayerOpen, openFullPlayer, closeFullPlayer } = usePlayer();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Tabs" component={TabNavigator} />
+        <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
+        <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
+        <Stack.Screen name="ShowDetail" component={ShowScreen} />
+        <Stack.Screen name="EpisodeDetail" component={EpisodeScreen} />
+        <Stack.Screen name="TeamDetail" component={TeamScreen} />
+        <Stack.Screen name="PersonDetail" component={PersonScreen} />
+        <Stack.Screen name="PlaylistDetail" component={PlaylistScreen} />
+        <Stack.Screen name="SubmitShow" component={SubmitShowScreen} />
+      </Stack.Navigator>
+      <MiniPlayer onPress={openFullPlayer} />
+      <Modal
+        visible={isFullPlayerOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeFullPlayer}
+      >
+        <FullPlayerScreen onClose={closeFullPlayer} />
+      </Modal>
+    </NavigationContainer>
+  );
+}
 
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('topic_slugs')
-          .eq('user_id', session.user.id)
-          .single();
-        setNeedsOnboarding(!profile?.topic_slugs || profile.topic_slugs.length === 0);
-      }
+function AppContent() {
+  const { user, isLoading, needsOnboarding, setNeedsOnboarding } = useAuth();
 
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('topic_slugs')
-          .eq('user_id', session.user.id)
-          .single();
-        setNeedsOnboarding(!profile?.topic_slugs || profile.topic_slugs.length === 0);
-      } else {
-        setNeedsOnboarding(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: '#E53935', fontSize: 28, fontWeight: 'bold' }}>GameVoices</Text>
@@ -132,18 +112,26 @@ export default function App() {
     );
   }
 
+  if (!user) {
+    return <AuthScreen onAuth={() => {}} />;
+  }
+
+  if (needsOnboarding) {
+    return <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />;
+  }
+
+  return <MainApp />;
+}
+
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <PlayerProvider>
-        {!session ? (
-          <AuthScreen onAuth={() => {}} />
-        ) : needsOnboarding ? (
-          <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />
-        ) : (
-          <MainApp onSignOut={() => supabase.auth.signOut()} />
-        )}
-        <StatusBar style="light" />
-      </PlayerProvider>
+      <AuthProvider>
+        <PlayerProvider>
+          <AppContent />
+          <StatusBar style="light" />
+        </PlayerProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

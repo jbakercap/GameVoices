@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -287,18 +288,12 @@ function EditProfileModal({ visible, onClose, profile, userId, onSaved }: {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const { user, signOut } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<any>(null);
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [userTeams, setUserTeams] = useState<string[]>([]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
-    });
-  }, []);
 
   useEffect(() => {
     if (profile?.topic_slugs) setUserTeams(profile.topic_slugs);
@@ -309,7 +304,7 @@ export default function ProfileScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out', style: 'destructive',
-        onPress: async () => { await supabase.auth.signOut(); },
+        onPress: async () => { await signOut(); },
       },
     ]);
   };

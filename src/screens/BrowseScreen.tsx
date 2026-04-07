@@ -6,6 +6,7 @@ import {
 import { Image } from 'expo-image';
 import { useLeagues, useAllTeams } from '../hooks/useLeagues';
 import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -13,15 +14,15 @@ import { useNavigation } from '@react-navigation/native';
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
 function useFollowedShows() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['followed-shows'],
+    queryKey: ['followed-shows', user?.id],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return [];
+      if (!user) return [];
       const { data, error } = await supabase
         .from('user_library')
         .select('show_id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('item_type', 'follow');
       if (error) throw error;
       return (data || []).map((r: any) => r.show_id);
@@ -371,6 +372,7 @@ function TrendingStoryRow({ story, allTeams }: { story: any, allTeams: any[] }) 
 }
 
 export default function BrowseScreen() {
+  const { user } = useAuth();
   const [selectedLeague, setSelectedLeague] = useState('all');
   const { data: trendingStories, isLoading: loadingTrending } = useTrendingStories();
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
@@ -411,28 +413,26 @@ export default function BrowseScreen() {
   }, [allTeams, selectedLeague, leagueMap]);
 
   const handleTeamToggle = async (slug: string) => {
+    if (!user) return;
     const isFollowing = followedSlugs.includes(slug);
     const updated = isFollowing ? followedSlugs.filter(s => s !== slug) : [...followedSlugs, slug];
     setFollowedSlugs(updated);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-    await supabase.from('profiles').update({ topic_slugs: updated }).eq('user_id', session.user.id);
+    await supabase.from('profiles').update({ topic_slugs: updated }).eq('user_id', user.id);
     queryClient.invalidateQueries({ queryKey: ['profile'] });
   };
 
   const handleShowToggle = async (showId: string) => {
+    if (!user) return;
     const isFollowing = followedShowIds.includes(showId);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
     if (isFollowing) {
       await supabase.from('user_library')
         .delete()
-        .eq('user_id', session.user.id)
+        .eq('user_id', user!.id)
         .eq('show_id', showId)
         .eq('item_type', 'follow');
     } else {
       await supabase.from('user_library')
-        .insert({ user_id: session.user.id, show_id: showId, item_type: 'follow' });
+        .insert({ user_id: user!.id, show_id: showId, item_type: 'follow' });
     }
     refetchShows();
   };

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface Profile {
   id: string;
@@ -11,18 +12,17 @@ export interface Profile {
 }
 
 export function useProfile() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', user?.id],
     queryFn: async (): Promise<Profile | null> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      
-      if (!session?.user) return null;
+      if (!user) return null;
 
       const { data, error } = await supabase
         .from('profiles')
         .select('id, topic_slugs, display_name, avatar_url, bio, twitter_handle')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;

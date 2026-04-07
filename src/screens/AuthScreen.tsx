@@ -3,9 +3,10 @@ import {
   View, Text, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
+  const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,11 +20,11 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
     setMessage('');
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await signIn(email, password);
       if (error) setError(error.message);
       else onAuth();
     } else {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await signUp(email, password);
       if (error) setError(error.message);
       else setMessage('Check your email to confirm your account!');
     }

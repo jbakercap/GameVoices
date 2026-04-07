@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import TrackPlayer, {
   usePlaybackState,
   useProgress,
@@ -14,6 +14,7 @@ export interface Episode {
   artworkUrl?: string;
   audioUrl: string;
   durationSeconds?: number;
+  startTime?: number;
 }
 
 interface PlayerContextValue {
@@ -31,6 +32,9 @@ interface PlayerContextValue {
   closeFullPlayer: () => void;
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
+  sleepTimerMinutes: number | null;
+  setSleepTimer: (minutes: number | null) => void;
+  sleepTimerSecondsLeft: number | null;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -71,6 +75,10 @@ async function setupPlayer() {
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+  const [sleepTimerEndTime, setSleepTimerEndTime] = useState<number | null>(null);
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
+  const [sleepTimerSecondsLeft, setSleepTimerSecondsLeft] = useState<number | null>(null);
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playbackState = usePlaybackState();
   const progress = useProgress(500);
@@ -90,6 +98,51 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setupPlayer().catch(console.error);
   }, []);
 
+  // Sleep timer countdown
+  useEffect(() => {
+    if (sleepTimerRef.current) {
+      clearInterval(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+
+    if (!sleepTimerEndTime) {
+      setSleepTimerSecondsLeft(null);
+      return;
+    }
+
+    const tick = () => {
+      const remaining = Math.round((sleepTimerEndTime - Date.now()) / 1000);
+      if (remaining <= 0) {
+        TrackPlayer.pause().catch(console.error);
+        setSleepTimerEndTime(null);
+        setSleepTimerMinutes(null);
+        setSleepTimerSecondsLeft(null);
+        if (sleepTimerRef.current) {
+          clearInterval(sleepTimerRef.current);
+          sleepTimerRef.current = null;
+        }
+      } else {
+        setSleepTimerSecondsLeft(remaining);
+      }
+    };
+
+    tick();
+    sleepTimerRef.current = setInterval(tick, 1000);
+    return () => {
+      if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+    };
+  }, [sleepTimerEndTime]);
+
+  const setSleepTimer = useCallback((minutes: number | null) => {
+    if (minutes === null) {
+      setSleepTimerEndTime(null);
+      setSleepTimerMinutes(null);
+    } else {
+      setSleepTimerEndTime(Date.now() + minutes * 60 * 1000);
+      setSleepTimerMinutes(minutes);
+    }
+  }, []);
+
   const playEpisode = useCallback(async (episode: Episode) => {
     try {
       await TrackPlayer.reset();
@@ -102,6 +155,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         duration: episode.durationSeconds,
       });
       await TrackPlayer.play();
+      if (episode.startTime && episode.startTime > 0) {
+        await TrackPlayer.seekTo(episode.startTime);
+      }
       setCurrentEpisode(episode);
     } catch (error) {
       console.error('Error playing episode:', error);
@@ -144,6 +200,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setPlaybackRate,
       openFullPlayer: () => setIsFullPlayerOpen(true),
       closeFullPlayer: () => setIsFullPlayerOpen(false),
+      sleepTimerMinutes,
+      setSleepTimer,
+      sleepTimerSecondsLeft,
     }}>
       {children}
     </PlayerContext.Provider>
