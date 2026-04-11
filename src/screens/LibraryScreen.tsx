@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Modal, TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
@@ -10,15 +10,25 @@ import { useQueue } from '../hooks/queries/useQueue';
 import { useGroupedListenHistory } from '../hooks/queries/useListenHistory';
 import { usePlaylists } from '../hooks/queries/usePlaylists';
 import { useSavedStories } from '../hooks/queries/useSavedStories';
+import { useBookmarks, Bookmark } from '../hooks/queries/useBookmarks';
 import { useRemoveFromQueue, useClearQueue } from '../hooks/mutations/useRemoveFromQueue';
 import { useClearHistory } from '../hooks/mutations/useClearHistory';
 import { useCreatePlaylist } from '../hooks/mutations/useCreatePlaylist';
 import { useDeletePlaylist } from '../hooks/mutations/useDeletePlaylist';
+import { useDeletePearl } from '../hooks/mutations/useDeletePearl';
+import { useUpdatePearl } from '../hooks/mutations/useUpdatePearl';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDurationHuman, formatRelativeDate } from '../lib/formatters';
 
-type LibraryTab = 'saved' | 'queue' | 'history' | 'playlists' | 'shows' | 'stories';
+type LibraryTab = 'saved' | 'queue' | 'history' | 'playlists' | 'shows' | 'stories' | 'moments';
+
+function formatTime(seconds: number): string {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -55,6 +65,7 @@ export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<LibraryTab>('saved');
   const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [editMomentModal, setEditMomentModal] = useState<{ pearl: Bookmark; note: string } | null>(null);
 
   const { data: savedEpisodes = [], isLoading: savedLoading } = useSavedEpisodes();
   const { data: queue = [], isLoading: queueLoading } = useQueue();
@@ -62,12 +73,15 @@ export default function LibraryScreen() {
   const { data: playlists = [], isLoading: playlistsLoading } = usePlaylists();
   const { data: followedShows = [], isLoading: showsLoading } = useFollowedShows();
   const { data: savedStories = [], isLoading: storiesLoading } = useSavedStories();
+  const { data: bookmarks = [], isLoading: bookmarksLoading } = useBookmarks();
 
   const removeFromQueue = useRemoveFromQueue();
   const clearQueue = useClearQueue();
   const clearHistory = useClearHistory();
   const createPlaylist = useCreatePlaylist();
   const deletePlaylist = useDeletePlaylist();
+  const deletePearl = useDeletePearl();
+  const updatePearl = useUpdatePearl();
 
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
 
@@ -96,6 +110,7 @@ export default function LibraryScreen() {
     { key: 'playlists', label: 'Playlists', count: playlists.length },
     { key: 'shows', label: 'Shows', count: followedShows.length },
     { key: 'stories', label: 'Stories', count: savedStories.length },
+    { key: 'moments', label: 'Moments', count: bookmarks.length },
   ];
 
   return (
@@ -347,6 +362,123 @@ export default function LibraryScreen() {
           />
         )
       )}
+
+      {/* Saved Moments (Pearls) */}
+      {activeTab === 'moments' && (
+        bookmarksLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+        bookmarks.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>✨</Text>
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>No saved moments yet</Text>
+            <Text style={{ color: '#888', fontSize: 14, textAlign: 'center' }}>
+              Tap the bookmark button while listening to save a moment
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={bookmarks}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            renderItem={({ item }) => {
+              const episode = item.episodes;
+              const show = episode?.shows;
+              const artwork = episode?.artwork_url || show?.artwork_url;
+              const displayText = item.note || episode?.title || 'Saved moment';
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+                  {/* Artwork / play button */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!episode) return;
+                      playEpisode({
+                        id: episode.id, title: episode.title,
+                        showTitle: show?.title || 'Unknown Show',
+                        showId: episode.show_id,
+                        artworkUrl: artwork || undefined,
+                        audioUrl: episode.audio_url,
+                        startTime: item.timestamp_seconds,
+                      });
+                    }}
+                    style={{ width: 52, height: 52, borderRadius: 8, overflow: 'hidden', backgroundColor: '#2A2A2A' }}
+                  >
+                    {artwork ? (
+                      <Image source={{ uri: artwork }} style={{ width: 52, height: 52 }} contentFit="cover" />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 18 }}>🎙</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Info */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 18 }} numberOfLines={2}>{displayText}</Text>
+                    <Text style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+                      {[show?.title, formatTime(item.timestamp_seconds)].filter(Boolean).join(' · ')}
+                    </Text>
+                    <Text style={{ color: '#555', fontSize: 11, marginTop: 1 }}>{formatRelativeDate(item.created_at)}</Text>
+                  </View>
+
+                  {/* Actions */}
+                  <TouchableOpacity
+                    onPress={() => Alert.alert('Saved Moment', item.note ? `Note: "${item.note}"` : 'No note', [
+                      { text: 'Edit Note', onPress: () => setEditMomentModal({ pearl: item, note: item.note || '' }) },
+                      { text: 'Delete', style: 'destructive', onPress: () => Alert.alert('Delete Moment', 'Remove this saved moment?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: () => deletePearl.mutate(item.id) },
+                      ])},
+                      { text: 'Cancel', style: 'cancel' },
+                    ])}
+                    style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: '#555', fontSize: 20 }}>···</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }}
+          />
+        )
+      )}
+
+      {/* Edit moment note modal */}
+      <Modal
+        visible={!!editMomentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditMomentModal(null)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 16 }}>Edit Note</Text>
+            <TextInput
+              value={editMomentModal?.note || ''}
+              onChangeText={text => setEditMomentModal(prev => prev ? { ...prev, note: text } : null)}
+              placeholder="e.g., great take on the trade deadline"
+              placeholderTextColor="#555"
+              style={{ backgroundColor: '#2A2A2A', color: '#fff', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 16 }}
+              autoFocus
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => setEditMomentModal(null)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#2A2A2A', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#aaa', fontSize: 15, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!editMomentModal) return;
+                  updatePearl.mutate({ pearlId: editMomentModal.pearl.id, note: editMomentModal.note.trim() || null });
+                  setEditMomentModal(null);
+                }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E53935', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

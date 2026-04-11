@@ -28,6 +28,7 @@ import TeamScreen from './src/screens/TeamScreen';
 import PersonScreen from './src/screens/PersonScreen';
 import PlaylistScreen from './src/screens/PlaylistScreen';
 import SubmitShowScreen from './src/screens/SubmitShowScreen';
+import TrendingScreen from './src/screens/TrendingScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -87,6 +88,7 @@ function MainApp() {
         <Stack.Screen name="PersonDetail" component={PersonScreen} />
         <Stack.Screen name="PlaylistDetail" component={PlaylistScreen} />
         <Stack.Screen name="SubmitShow" component={SubmitShowScreen} />
+        <Stack.Screen name="Trending" component={TrendingScreen} />
       </Stack.Navigator>
       <MiniPlayer onPress={openFullPlayer} />
       <Modal

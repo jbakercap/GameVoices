@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
+import { useAddPearl } from '../hooks/mutations/useAddPearl';
 
 function formatTime(seconds: number): string {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -23,6 +24,30 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
         playbackRate,
         setPlaybackRate,
       } = usePlayer();
+
+  const addPearl = useAddPearl();
+  const [bookmarkModal, setBookmarkModal] = useState<{ timestamp: number } | null>(null);
+  const [bookmarkNote, setBookmarkNote] = useState('');
+
+  const handleBookmark = () => {
+    if (!currentEpisode) return;
+    setBookmarkNote('');
+    setBookmarkModal({ timestamp: progress.position });
+  };
+
+  const handleSaveBookmark = async () => {
+    if (!currentEpisode || !bookmarkModal) return;
+    try {
+      await addPearl.mutateAsync({
+        episodeId: currentEpisode.id,
+        timestampSeconds: bookmarkModal.timestamp,
+        note: bookmarkNote.trim() || undefined,
+      });
+      setBookmarkModal(null);
+    } catch (e: any) {
+      Alert.alert('Could not save', e.message || 'Failed to save moment');
+    }
+  };
 
   if (!currentEpisode) return null;
 
@@ -93,6 +118,11 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
 
       {/* Controls */}
       <View style={styles.controls}>
+        {/* Bookmark */}
+        <TouchableOpacity onPress={handleBookmark} style={styles.skipButton}>
+          <Ionicons name="bookmark-outline" size={26} color="#fff" />
+        </TouchableOpacity>
+
         {/* Skip Back */}
         <TouchableOpacity onPress={skipBack} style={styles.skipButton}>
           <Ionicons name="play-back" size={28} color="#fff" />
@@ -133,6 +163,50 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Bookmark Modal */}
+      <Modal
+        visible={!!bookmarkModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBookmarkModal(null)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 4 }}>
+              ✨ Moment saved at {bookmarkModal ? formatTime(bookmarkModal.timestamp) : ''}
+            </Text>
+            <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
+              Add a note (optional)
+            </Text>
+            <TextInput
+              value={bookmarkNote}
+              onChangeText={setBookmarkNote}
+              placeholder="e.g., great take on the trade deadline"
+              placeholderTextColor="#555"
+              style={{ backgroundColor: '#2A2A2A', color: '#fff', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 16 }}
+              autoFocus
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => setBookmarkModal(null)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#2A2A2A', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#aaa', fontSize: 15, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveBookmark}
+                disabled={addPearl.isPending}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E53935', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                  {addPearl.isPending ? 'Saving...' : 'Done'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

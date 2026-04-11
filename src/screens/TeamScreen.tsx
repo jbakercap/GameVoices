@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, FlatList,
+  ActivityIndicator, FlatList, Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -11,11 +11,80 @@ import { useTeamEpisodes } from '../hooks/queries/useTeamEpisodes';
 import { useTeamRoster } from '../hooks/queries/useTeamRoster';
 import { useTeamSchedule } from '../hooks/queries/useTeamSchedule';
 import { useTeamGameStories } from '../hooks/queries/useTeamGameStories';
+import { useTeamBuzzFeed, BuzzPost, hasVideo } from '../hooks/queries/useTeamBuzzFeed';
+import { useSyncBuzz } from '../hooks/queries/useSyncBuzz';
 import { useFollowShow } from '../hooks/mutations/useFollowShow';
 import { usePlayer } from '../contexts/PlayerContext';
 import { formatDurationHuman, formatRelativeDate } from '../lib/formatters';
 
-type Tab = 'episodes' | 'shows' | 'roster' | 'scores';
+type Tab = 'episodes' | 'shows' | 'roster' | 'scores' | 'buzz';
+type BuzzFilter = 'all' | 'video';
+
+function cleanBuzzText(text: string) {
+  return text
+    .replace(/https?:\/\/t\.co\/\w+/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .trim();
+}
+
+function BuzzPostCard({ post, teamColor }: { post: BuzzPost; teamColor: string }) {
+  const author = post.postData?.author || { name: post.handle, username: post.handle };
+  const media = post.postData?.media || [];
+  const videoMedia = media.find((m: any) => m.type === 'video' || m.type === 'animated_gif');
+  const imageMedia = media.find((m: any) => m.type === 'photo');
+  const thumbnail = videoMedia?.preview_image_url || videoMedia?.url || imageMedia?.url;
+  const cleanText = cleanBuzzText(post.text);
+  const openOnX = () => Linking.openURL(`https://x.com/${author.username}/status/${post.postId}`);
+
+  return (
+    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14, marginHorizontal: 16, marginBottom: 10 }}>
+      {/* Author row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        {author.profileImageUrl ? (
+          <Image source={{ uri: author.profileImageUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+        ) : (
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#888', fontSize: 13, fontWeight: 'bold' }}>{(author.name || post.handle)[0]?.toUpperCase()}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{author.name || post.handle}</Text>
+          <Text style={{ color: '#666', fontSize: 12 }}>@{author.username || post.handle}</Text>
+        </View>
+        <TouchableOpacity onPress={openOnX} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#000', borderWidth: 1, borderColor: '#333', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>𝕏</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Text */}
+      {cleanText.length > 0 && (
+        <Text style={{ color: '#ddd', fontSize: 14, lineHeight: 20, marginBottom: thumbnail ? 10 : 0 }} numberOfLines={6}>
+          {cleanText}
+        </Text>
+      )}
+
+      {/* Media thumbnail */}
+      {thumbnail && (
+        <TouchableOpacity onPress={openOnX}>
+          <View style={{ borderRadius: 8, overflow: 'hidden', aspectRatio: 16 / 9, backgroundColor: '#000' }}>
+            <Image source={{ uri: thumbnail }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+            {videoMedia && (
+              <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 18 }}>▶</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Timestamp */}
+      <Text style={{ color: '#555', fontSize: 11, marginTop: 8 }}>{formatRelativeDate(post.postedAt)}</Text>
+    </View>
+  );
+}
 
 function GameScoreCard({ story }: { story: any }) {
   const navigation = useNavigation<any>();
@@ -62,6 +131,7 @@ export default function TeamScreen() {
   const route = useRoute<any>();
   const { teamSlug } = route.params;
   const [activeTab, setActiveTab] = useState<Tab>('episodes');
+  const [buzzFilter, setBuzzFilter] = useState<BuzzFilter>('all');
 
   const { data: team, isLoading: teamLoading } = useTeam(teamSlug);
   const { data: shows = [], isLoading: showsLoading } = useTeamShows(teamSlug);
@@ -74,6 +144,15 @@ export default function TeamScreen() {
 
   const episodes = episodesPages?.pages.flatMap(p => p.episodes) || [];
   const teamColor = team?.primary_color || '#E53935';
+
+  const {
+    posts: buzzPosts, isLoading: buzzLoading, isEmpty: buzzEmpty,
+    refresh: refreshBuzz, isRefreshing: buzzRefreshing,
+    fetchNextPage: fetchNextBuzz, hasNextPage: hasNextBuzz, isFetchingNextPage: fetchingNextBuzz,
+  } = useTeamBuzzFeed(team?.id, buzzFilter);
+  useSyncBuzz(team?.id);
+
+  const filteredBuzz = buzzFilter === 'video' ? buzzPosts.filter(hasVideo) : buzzPosts;
 
   if (teamLoading) {
     return (
@@ -96,6 +175,7 @@ export default function TeamScreen() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'episodes', label: 'Episodes' },
+    { key: 'buzz', label: 'Buzz' },
     { key: 'shows', label: `Shows (${shows.length})` },
     { key: 'scores', label: `Scores (${gameStories.length})` },
     { key: 'roster', label: 'Roster' },
@@ -228,6 +308,52 @@ export default function TeamScreen() {
             gameStories.map(story => <GameScoreCard key={story.id} story={story} />)
           )}
         </ScrollView>
+      )}
+
+      {activeTab === 'buzz' && (
+        <View style={{ flex: 1 }}>
+          {/* Filter + Refresh row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+            {(['all', 'video'] as BuzzFilter[]).map(f => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setBuzzFilter(f)}
+                style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: buzzFilter === f ? teamColor : '#2A2A2A' }}
+              >
+                <Text style={{ color: buzzFilter === f ? '#fff' : '#aaa', fontSize: 13, fontWeight: '600' }}>
+                  {f === 'all' ? 'All' : 'Video'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              onPress={refreshBuzz}
+              disabled={buzzRefreshing}
+              style={{ marginLeft: 'auto', width: 32, height: 32, borderRadius: 16, backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center', opacity: buzzRefreshing ? 0.4 : 1 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16 }}>↻</Text>
+            </TouchableOpacity>
+          </View>
+
+          {buzzLoading ? (
+            <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} />
+          ) : filteredBuzz.length === 0 ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#888', fontSize: 15 }}>
+                {buzzFilter === 'video' ? 'No video posts right now' : 'No posts right now'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredBuzz}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ paddingTop: 4, paddingBottom: 120 }}
+              onEndReached={() => hasNextBuzz && fetchNextBuzz()}
+              onEndReachedThreshold={0.4}
+              renderItem={({ item }) => <BuzzPostCard post={item} teamColor={teamColor} />}
+              ListFooterComponent={fetchingNextBuzz ? <ActivityIndicator color="#E53935" style={{ marginVertical: 16 }} /> : null}
+            />
+          )}
+        </View>
       )}
 
       {activeTab === 'roster' && (

@@ -1,19 +1,21 @@
 import React, {
-  useState, useRef, useCallback, useEffect, useMemo,
+  useState, useRef, useCallback, useEffect,
 } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Dimensions,
   ActivityIndicator, Linking, StyleSheet, ViewToken,
-  StatusBar as RNStatusBar,
+  StatusBar as RNStatusBar, ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWatchXVideos, WatchVideoPost } from '../hooks/queries/useWatchXVideos';
 import { useUserTeams } from '../hooks/useUserTeams';
+import { useTeamsWithFollowedShows } from '../hooks/queries/useTeamsWithFollowedShows';
+import { useSyncBuzzMulti } from '../hooks/queries/useSyncBuzzMulti';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { useQuery } from '@tanstack/react-query';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 // Full screen height accounting for status bar so snap is pixel-perfect
@@ -36,9 +38,14 @@ interface VideoClip {
   players: { name: string; slug: string } | null;
 }
 
+interface CreatorProfile {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-function useVideoClips() {
+function useVideoClips(enabled: boolean) {
   return useQuery({
     queryKey: ['watch-clips'],
     queryFn: async (): Promise<VideoClip[]> => {
@@ -53,6 +60,26 @@ function useVideoClips() {
       return (data || []) as unknown as VideoClip[];
     },
     staleTime: 5 * 60 * 1000,
+    enabled,
+  });
+}
+
+function useClipCreators(clips: VideoClip[], enabled: boolean) {
+  const creatorIds = [...new Set(clips.map(c => c.created_by).filter(Boolean))] as string[];
+  return useQuery({
+    queryKey: ['watch-clip-creators', creatorIds],
+    queryFn: async (): Promise<Record<string, CreatorProfile>> => {
+      if (creatorIds.length === 0) return {};
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', creatorIds);
+      const map: Record<string, CreatorProfile> = {};
+      data?.forEach((p: any) => { map[p.user_id] = p; });
+      return map;
+    },
+    enabled: enabled && creatorIds.length > 0,
+    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -255,14 +282,31 @@ function BuzzCard({ post, isActive, isMuted, onMuteToggle }: {
 
 // ─── Clips card ───────────────────────────────────────────────────────────────
 
-function ClipCard({ clip, isActive, isMuted, onMuteToggle }: {
+function ClipCard({ clip, isActive, isMuted, onMuteToggle, creatorProfile }: {
   clip: VideoClip;
   isActive: boolean;
   isMuted: boolean;
   onMuteToggle: () => void;
+  creatorProfile?: CreatorProfile | null;
 }) {
   const navigation = useNavigation<any>();
   const [expanded, setExpanded] = useState(false);
+
+  const creatorName = creatorProfile?.display_name || 'GameVoices';
+  const creatorAvatar = creatorProfile?.avatar_url;
+
+  const topOverlay = (
+    <View style={styles.creatorHeader}>
+      {creatorAvatar ? (
+        <Image source={{ uri: creatorAvatar }} style={styles.creatorAvatar} contentFit="cover" />
+      ) : (
+        <View style={[styles.creatorAvatar, styles.creatorAvatarFallback]}>
+          <Text style={styles.creatorAvatarInitial}>{creatorName[0]?.toUpperCase()}</Text>
+        </View>
+      )}
+      <Text style={styles.creatorName}>{creatorName}</Text>
+    </View>
+  );
 
   const overlay = (
     <View style={styles.clipMeta}>
@@ -313,6 +357,7 @@ function ClipCard({ clip, isActive, isMuted, onMuteToggle }: {
       isMuted={isMuted}
       onMuteToggle={onMuteToggle}
       overlay={overlay}
+      topOverlay={topOverlay}
     />
   );
 }
@@ -360,19 +405,43 @@ type Tab = 'buzz' | 'clips';
 
 export default function WatchScreen() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('buzz');
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const lastRefreshAt = useRef(0);
 
+  // useTeamsWithFollowedShows for buzz (has fallback logic)
+  const { data: buzzTeams = [] } = useTeamsWithFollowedShows();
+  const buzzTeamIds = buzzTeams.map(t => t.id);
+
+  // useUserTeams for logo strip (explicit prefs only)
   const { data: userTeams = [] } = useUserTeams();
-  const teamIds = userTeams.map(t => t.id);
 
   const { posts, isLoading: buzzLoading, isEmpty: buzzEmpty } = useWatchXVideos(
-    activeTab === 'buzz' ? teamIds : []
+    activeTab === 'buzz' ? buzzTeamIds : []
   );
-  const { data: clips = [], isLoading: clipsLoading } = useVideoClips();
+  const { syncAllTeams, isSyncing } = useSyncBuzzMulti(
+    activeTab === 'buzz' ? buzzTeamIds : []
+  );
+  const { data: clips = [], isLoading: clipsLoading } = useVideoClips(activeTab === 'clips');
+  const { data: creatorProfiles = {} } = useClipCreators(clips, activeTab === 'clips');
 
   const isLoading = activeTab === 'buzz' ? buzzLoading : clipsLoading;
+
+  const handleRefresh = async () => {
+    const now = Date.now();
+    if (now - lastRefreshAt.current < 30000) return;
+    lastRefreshAt.current = now;
+    setCooldownActive(true);
+    setTimeout(() => setCooldownActive(false), 30000);
+    if (activeTab === 'buzz') {
+      await syncAllTeams();
+    } else {
+      await queryClient.invalidateQueries({ queryKey: ['watch-clips'] });
+    }
+  };
 
   // Reset active index when switching tabs
   useEffect(() => {
@@ -408,8 +477,9 @@ export default function WatchScreen() {
       isActive={index === activeIndex}
       isMuted={isMuted}
       onMuteToggle={() => setIsMuted(m => !m)}
+      creatorProfile={item.created_by ? creatorProfiles[item.created_by] : null}
     />
-  ), [activeIndex, isMuted]);
+  ), [activeIndex, isMuted, creatorProfiles]);
 
   const buzzKey = useCallback((item: WatchVideoPost) => item.id, []);
   const clipKey = useCallback((item: VideoClip) => item.id, []);
@@ -444,6 +514,13 @@ export default function WatchScreen() {
               Clips
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.refreshBtn, (cooldownActive || isSyncing) && styles.refreshBtnDisabled]}
+            onPress={handleRefresh}
+            disabled={cooldownActive || isSyncing}
+          >
+            <Text style={styles.refreshBtnText}>{isSyncing ? '⟳' : '↻'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -454,25 +531,46 @@ export default function WatchScreen() {
         </View>
       ) : activeTab === 'buzz' ? (
         buzzEmpty ? (
-          <EmptyBuzz hasTeams={teamIds.length > 0} />
+          <EmptyBuzz hasTeams={buzzTeamIds.length > 0} />
         ) : (
-          <FlatList
-            data={posts}
-            renderItem={renderBuzzItem}
-            keyExtractor={buzzKey}
-            pagingEnabled
-            snapToInterval={ITEM_HEIGHT}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            showsVerticalScrollIndicator={false}
-            getItemLayout={getItemLayout}
-            viewabilityConfig={viewabilityConfig.current}
-            onViewableItemsChanged={onViewableItemsChanged.current}
-            removeClippedSubviews
-            windowSize={3}
-            initialNumToRender={2}
-            maxToRenderPerBatch={2}
-          />
+          <>
+            {/* Team logo strip */}
+            {userTeams.length > 0 && (
+              <View style={styles.teamStrip}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamStripContent}>
+                  {userTeams.map(t => (
+                    <View key={t.id} style={styles.teamStripItem}>
+                      <View style={[styles.teamStripLogo, { borderColor: t.primary_color || 'rgba(255,255,255,0.3)' }]}>
+                        {t.logo_url ? (
+                          <Image source={{ uri: t.logo_url }} style={styles.teamStripLogoImg} contentFit="contain" />
+                        ) : (
+                          <Text style={styles.teamStripAbbr}>{t.short_name?.slice(0, 3)}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.teamStripName} numberOfLines={1}>{t.short_name}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            <FlatList
+              data={posts}
+              renderItem={renderBuzzItem}
+              keyExtractor={buzzKey}
+              pagingEnabled
+              snapToInterval={ITEM_HEIGHT}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              showsVerticalScrollIndicator={false}
+              getItemLayout={getItemLayout}
+              viewabilityConfig={viewabilityConfig.current}
+              onViewableItemsChanged={onViewableItemsChanged.current}
+              removeClippedSubviews
+              windowSize={3}
+              initialNumToRender={2}
+              maxToRenderPerBatch={2}
+            />
+          </>
         )
       ) : (
         clips.length === 0 ? (
@@ -556,6 +654,98 @@ const styles = StyleSheet.create({
   },
   pillTextActive: {
     color: '#000',
+  },
+  // Refresh button
+  refreshBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshBtnDisabled: {
+    opacity: 0.4,
+  },
+  refreshBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  // Team logo strip
+  teamStrip: {
+    position: 'absolute',
+    top: 110,
+    left: 0,
+    right: 0,
+    zIndex: 9,
+  },
+  teamStripContent: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  teamStripItem: {
+    alignItems: 'center',
+    gap: 4,
+    width: 56,
+  },
+  teamStripLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+  },
+  teamStripLogoImg: {
+    width: 32,
+    height: 32,
+  },
+  teamStripAbbr: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#333',
+  },
+  teamStripName: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 10,
+    fontWeight: '500',
+    textAlign: 'center',
+    width: 56,
+  },
+  // Creator header on clip cards
+  creatorHeader: {
+    position: 'absolute',
+    top: 110,
+    left: 16,
+    right: 16,
+    zIndex: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  creatorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  creatorAvatarFallback: {
+    backgroundColor: '#444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  creatorAvatarInitial: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  creatorName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   // Overlays
   bottomOverlay: {

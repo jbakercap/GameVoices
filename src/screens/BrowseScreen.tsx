@@ -1,15 +1,19 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, FlatList
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLeagues, useAllTeams } from '../hooks/useLeagues';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlayer } from '../contexts/PlayerContext';
 import { supabase } from '../lib/supabase';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useBrowseGameStories, GameStory } from '../hooks/queries/useBrowseGameStories';
+import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows';
+import { useBrowsePopularEpisodes, PopularEpisode } from '../hooks/queries/useBrowsePopularEpisodes';
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -53,55 +57,45 @@ function useShowsByLeague(leagueId: string | null) {
   });
 }
 
-function useTrendingStories() {
+function useNationalShows(sport = 'all') {
   return useQuery({
-    queryKey: ['trending-stories-browse'],
+    queryKey: ['national-shows', sport],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('stories')
-        .select(`
-          id, headline, story_type, team_slugs, episode_count, show_count, event_date,
-          episode_stories(
-            episode:episodes(
-              id, title, artwork_url, duration_seconds,
-              shows(id, title, artwork_url)
-            )
-          )
-        `)
-        .eq('status', 'active')
-        .gte('expires_at', new Date().toISOString())
-        .gte('show_count', 2)
-        .order('episode_count', { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-function useNationalShows() {
-  return useQuery({
-    queryKey: ['national-shows'],
-    queryFn: async () => {
-      // Get the 'general' league ID first
+      if (sport === 'all') {
+        const { data: league } = await supabase
+          .from('leagues')
+          .select('id')
+          .eq('slug', 'general')
+          .single();
+        if (!league) return [];
+        const { data, error } = await supabase
+          .from('shows')
+          .select('id, title, artwork_url, episode_count')
+          .eq('league_id', (league as any).id)
+          .eq('status', 'active')
+          .order('episode_count', { ascending: false })
+          .limit(20);
+        if (error) return [];
+        return data || [];
+      }
+      // Sport tab: shows with no team_id for this league (national coverage)
       const { data: league } = await supabase
         .from('leagues')
         .select('id')
-        .eq('slug', 'general')
+        .eq('slug', sport)
         .single();
-
       if (!league) return [];
-
       const { data, error } = await supabase
         .from('shows')
-        .select('id, title, artwork_url, episode_count, team_id, league_id')
-        .eq('league_id', league.id)
+        .select('id, title, artwork_url, episode_count')
+        .eq('league_id', (league as any).id)
+        .is('team_id', null)
         .eq('status', 'active')
+        .eq('is_fantasy_show', false)
+        .eq('is_betting_show', false)
         .order('episode_count', { ascending: false })
         .limit(20);
-
-      if (error) throw error;
+      if (error) return [];
       return data || [];
     },
     staleTime: 10 * 60 * 1000,
@@ -114,22 +108,18 @@ function LeaguePill({ label, selected, onPress }: {
   label: string; selected: boolean; onPress: () => void;
 }) {
   return (
-    <TouchableOpacity 
-      onPress={onPress} 
+    <TouchableOpacity
+      onPress={onPress}
       style={{
-        paddingHorizontal: 16, 
-        paddingVertical: 8, 
-        borderRadius: 20, 
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
         marginRight: 8,
         backgroundColor: selected ? '#fff' : 'rgba(255,255,255,0.08)',
         borderWidth: 1,
         borderColor: selected ? 'transparent' : 'rgba(255,255,255,0.25)',
       }}>
-      <Text style={{
-        color: selected ? '#000' : '#888',
-        fontWeight: '600', 
-        fontSize: 14,
-      }}>
+      <Text style={{ color: selected ? '#000' : '#888', fontWeight: '600', fontSize: 14 }}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -168,9 +158,7 @@ function ShowCard({ show, isFollowing, onToggle }: {
         {show.title}
       </Text>
       {show.episode_count > 0 && (
-        <Text style={{ color: '#555', fontSize: 10, marginTop: 2 }}>
-          {show.episode_count} eps
-        </Text>
+        <Text style={{ color: '#555', fontSize: 10, marginTop: 2 }}>{show.episode_count} eps</Text>
       )}
     </TouchableOpacity>
   );
@@ -179,15 +167,13 @@ function ShowCard({ show, isFollowing, onToggle }: {
 function TeamGrid({ teams, followedSlugs, onToggle }: {
   teams: any[]; followedSlugs: string[]; onToggle: (slug: string) => void;
 }) {
-  // Group teams by division
   const byDivision = useMemo(() => {
     const grouped: Record<string, any[]> = {};
     teams.forEach(team => {
       const conf = team.conference || '';
       const div = team.division || 'Other';
       const label = conf && !div.startsWith(conf) && !div.match(/^[A-Z]{2}\s/)
-        ? `${conf} ${div}`
-        : div;
+        ? `${conf} ${div}` : div;
       if (!grouped[label]) grouped[label] = [];
       grouped[label].push(team);
     });
@@ -200,25 +186,20 @@ function TeamGrid({ teams, followedSlugs, onToggle }: {
     <View style={{ paddingHorizontal: 16 }}>
       {byDivision.map(({ division, teams: divTeams }) => (
         <View key={division} style={{ marginBottom: 24 }}>
-          {/* Division header */}
           <Text style={{
             color: '#555', fontSize: 11, fontWeight: '700',
-            textTransform: 'uppercase', letterSpacing: 1,
-            marginBottom: 12,
+            textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
           }}>
             {division}
           </Text>
-          {/* Team logos */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {divTeams.map(team => (
               <TouchableOpacity key={team.id} onPress={() => onToggle(team.slug)}
                 style={{ alignItems: 'center', width: 56 }}>
                 <View style={{
-                  width: 56, height: 56, borderRadius: 10,
-                  backgroundColor: '#fff',
+                  width: 56, height: 56, borderRadius: 10, backgroundColor: '#fff',
                   borderWidth: followedSlugs.includes(team.slug) ? 3 : 1,
-                  borderColor: followedSlugs.includes(team.slug)
-                    ? (team.primary_color || '#E53935') : '#333',
+                  borderColor: followedSlugs.includes(team.slug) ? (team.primary_color || '#E53935') : '#333',
                   overflow: 'hidden', marginBottom: 4,
                   alignItems: 'center', justifyContent: 'center',
                 }}>
@@ -251,130 +232,156 @@ function TeamGrid({ teams, followedSlugs, onToggle }: {
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+function ScoreboardCard({ story }: { story: GameStory }) {
+  const navigation = useNavigation<any>();
+  const hasScore = story.home_score !== null && story.away_score !== null;
+  const homeWon = hasScore && story.home_score! > story.away_score!;
+  const awayWon = hasScore && story.away_score! > story.home_score!;
 
-const STORY_TYPE_COLORS: Record<string, string> = {
-  game_result: '#4CAF50',
-  game_preview: '#2196F3',
-  trade: '#FF9800',
-  signing: '#FF9800',
-  injury: '#F44336',
-  general: '#888',
-  player_emergence: '#9C27B0',
-  award_candidacy: '#FFD700',
-  coaching: '#00BCD4',
-  milestone: '#FFD700',
-  draft: '#888',
-  offseason: '#888',
-};
-
-function EpisodeCard({ episode }: { episode: any }) {
-  const artwork = episode.artwork_url || episode.shows?.artwork_url;
   return (
-    <TouchableOpacity style={{ width: 160, marginRight: 12, flexShrink: 0 }}>
+    <TouchableOpacity
+      onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
+      style={{
+        width: 170, marginRight: 12,
+        backgroundColor: '#1A1A1A', borderRadius: 12,
+        borderWidth: 1, borderColor: '#2A2A2A',
+        padding: 12,
+      }}
+      activeOpacity={0.8}
+    >
+      {/* Away team row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{
+          width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
+          alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 8,
+        }}>
+          {story.away_logo ? (
+            <Image source={{ uri: story.away_logo }} style={{ width: 20, height: 20 }} contentFit="contain" />
+          ) : (
+            <Text style={{ color: '#000', fontSize: 9, fontWeight: 'bold' }}>
+              {story.away_abbr?.slice(0, 3) || '?'}
+            </Text>
+          )}
+        </View>
+        <Text style={{
+          color: awayWon ? '#fff' : '#888', fontSize: 13, fontWeight: '600', flex: 1,
+        }} numberOfLines={1}>
+          {story.away_abbr || 'AWAY'}
+        </Text>
+        {hasScore && (
+          <Text style={{ color: awayWon ? '#fff' : '#888', fontSize: 16, fontWeight: 'bold' }}>
+            {story.away_score}
+          </Text>
+        )}
+      </View>
+
+      {/* Home team row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+        <View style={{
+          width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
+          alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 8,
+        }}>
+          {story.home_logo ? (
+            <Image source={{ uri: story.home_logo }} style={{ width: 20, height: 20 }} contentFit="contain" />
+          ) : (
+            <Text style={{ color: '#000', fontSize: 9, fontWeight: 'bold' }}>
+              {story.home_abbr?.slice(0, 3) || '?'}
+            </Text>
+          )}
+        </View>
+        <Text style={{
+          color: homeWon ? '#fff' : '#888', fontSize: 13, fontWeight: '600', flex: 1,
+        }} numberOfLines={1}>
+          {story.home_abbr || 'HOME'}
+        </Text>
+        {hasScore && (
+          <Text style={{ color: homeWon ? '#fff' : '#888', fontSize: 16, fontWeight: 'bold' }}>
+            {story.home_score}
+          </Text>
+        )}
+      </View>
+
+      {/* Footer */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Text style={{ color: '#555', fontSize: 11 }}>
+          {story.episode_count} ep{story.episode_count !== 1 ? 's' : ''}
+        </Text>
+        {story.sport && (
+          <Text style={{ color: '#444', fontSize: 11 }}>· {story.sport.toUpperCase()}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function PopularEpisodeRow({ episode }: { episode: PopularEpisode }) {
+  const { playEpisode } = usePlayer();
+  const artwork = episode.artwork_url || episode.shows?.artwork_url;
+
+  const formatDur = (secs: number | null) => {
+    if (!secs) return '';
+    const mins = Math.floor(secs / 60);
+    return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+  };
+
+  const meta = [
+    episode.shows?.title,
+    formatDur(episode.duration_seconds),
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <TouchableOpacity
+      onPress={() => playEpisode({
+        id: episode.id,
+        title: episode.title,
+        showTitle: episode.shows?.title || '',
+        audioUrl: episode.audio_url,
+        artworkUrl: artwork || undefined,
+        durationSeconds: episode.duration_seconds ?? undefined,
+      })}
+      style={{
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 10, gap: 12,
+      }}
+      activeOpacity={0.8}
+    >
       <View style={{
-        width: 160, height: 160, borderRadius: 12,
-        backgroundColor: '#2A2A2A', overflow: 'hidden', marginBottom: 8,
+        width: 52, height: 52, borderRadius: 8,
+        backgroundColor: '#2A2A2A', overflow: 'hidden', flexShrink: 0,
       }}>
         {artwork ? (
-          <Image source={{ uri: artwork }} style={{ width: 160, height: 160 }} contentFit="cover" />
+          <Image source={{ uri: artwork }} style={{ width: 52, height: 52 }} contentFit="cover" />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>
-              {episode.shows?.title?.slice(0, 2).toUpperCase() || 'EP'}
-            </Text>
+            <Text style={{ color: '#fff', fontSize: 18 }}>🎙</Text>
           </View>
         )}
-        {/* Play button */}
-        <View style={{
-          position: 'absolute', bottom: 8, right: 8,
-          width: 36, height: 36, borderRadius: 18,
-          backgroundColor: '#E53935',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Text style={{ color: '#fff', fontSize: 12, marginLeft: 2 }}>▶</Text>
-        </View>
       </View>
-      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }}
-        numberOfLines={3}>{episode.title}</Text>
-      <Text style={{ color: '#888', fontSize: 11, marginTop: 3 }}
-        numberOfLines={1}>{episode.shows?.title}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function TrendingStoryRow({ story, allTeams }: { story: any, allTeams: any[] }) {
-  const navigation = useNavigation<any>();
-  const teams = (story.team_slugs || [])
-    .map((slug: string) => allTeams.find(t => t.slug === slug))
-    .filter(Boolean)
-    .slice(0, 4);
-
-    const episodes = (story.episode_stories || [])
-    .map((es: any) => es.episode)
-    .filter(Boolean)
-    .slice(0, 8);
-  
-  if (episodes.length === 0) return null;
-
-  const metaParts = [];
-  if (story.show_count > 0) metaParts.push(`${story.show_count} show${story.show_count !== 1 ? 's' : ''}`);
-  if (story.episode_count > 0) metaParts.push(`${story.episode_count} ep${story.episode_count !== 1 ? 's' : ''}`);
-
-  return (
-    <TouchableOpacity 
-      onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
-      style={{ marginBottom: 28, paddingHorizontal: 16 }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', flex: 1, lineHeight: 22 }}>
-          {story.headline}
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500', lineHeight: 19 }} numberOfLines={2}>
+          {episode.title}
         </Text>
-        <Text style={{ color: '#888', fontSize: 16, marginLeft: 8 }}>›</Text>
-      </View>
-
-      {/* Meta line — team logos + counts */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, flexWrap: 'nowrap' }}>
-        {teams.map((team: any, i: number) => (
-          <View key={team.slug} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
-            {i > 0 && <Text style={{ color: '#555', marginRight: 6 }}>·</Text>}
-            <View style={{
-              width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff',
-              alignItems: 'center', justifyContent: 'center', marginRight: 4, overflow: 'hidden',
-            }}>
-              <Image source={{ uri: team.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
-            </View>
-            <Text style={{ color: '#888', fontSize: 12 }}>{team.short_name}</Text>
-          </View>
-        ))}
-        {teams.length > 0 && metaParts.length > 0 && (
-          <Text style={{ color: '#555', marginHorizontal: 6 }}>·</Text>
+        {!!meta && (
+          <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }} numberOfLines={1}>{meta}</Text>
         )}
-        <Text style={{ color: '#888', fontSize: 12 }}>{metaParts.join(' · ')}</Text>
       </View>
-
-      {/* Episode horizontal scroll */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 16 }}
-        style={{ marginHorizontal: -16 }}
-      >
-        <View style={{ paddingLeft: 16, flexDirection: 'row' }}>
-          {episodes.map((ep: any) => (
-            <EpisodeCard key={ep.id} episode={ep} />
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Divider */}
-      <View style={{ height: 1, backgroundColor: '#222', marginTop: 20 }} />
+      <View style={{
+        width: 32, height: 32, borderRadius: 16,
+        backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ color: '#fff', fontSize: 11, marginLeft: 2 }}>▶</Text>
+      </View>
     </TouchableOpacity>
   );
 }
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function BrowseScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [selectedLeague, setSelectedLeague] = useState('all');
-  const { data: trendingStories, isLoading: loadingTrending } = useTrendingStories();
+
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: allTeams } = useAllTeams();
   const { data: profile } = useProfile();
@@ -389,7 +396,6 @@ export default function BrowseScreen() {
     setInitialized(true);
   }
 
-  // Build league id -> slug map
   const leagueMap = useMemo(() => {
     const map: Record<string, string> = {};
     (leagues || []).forEach((l: any) => { map[l.id] = l.slug; });
@@ -403,15 +409,26 @@ export default function BrowseScreen() {
   }, [leagues]);
 
   const selectedLeagueId = selectedLeague !== 'all' ? leagueIdMap[selectedLeague] : null;
+
+  // ── Data ───────────────────────────────────────────────────────────────────
   const { data: leagueShows, isLoading: loadingShows } = useShowsByLeague(selectedLeagueId);
-  const { data: nationalShows, isLoading: loadingNational } = useNationalShows();
+  const { data: nationalShows, isLoading: loadingNational } = useNationalShows(selectedLeague);
+  const { data: gameStories = [], isLoading: loadingScoreboard } = useBrowseGameStories(
+    selectedLeague === 'all' ? undefined : selectedLeague
+  );
+  const { data: regionalShows = [], isLoading: loadingRegional } = useBrowseRegionalShows(
+    selectedLeague === 'all' ? undefined : selectedLeague
+  );
+  const { data: popularEpisodes = [], isLoading: loadingPopular } = useBrowsePopularEpisodes(
+    selectedLeague === 'all' ? undefined : selectedLeague
+  );
 
   const leagueTeams = useMemo(() => {
     if (selectedLeague === 'all') return [];
-    const filtered = (allTeams || []).filter((t: any) => leagueMap[t.league_id] === selectedLeague);
-    return filtered;
+    return (allTeams || []).filter((t: any) => leagueMap[t.league_id] === selectedLeague);
   }, [allTeams, selectedLeague, leagueMap]);
 
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleTeamToggle = async (slug: string) => {
     if (!user) return;
     const isFollowing = followedSlugs.includes(slug);
@@ -426,18 +443,13 @@ export default function BrowseScreen() {
     const isFollowing = followedShowIds.includes(showId);
     if (isFollowing) {
       await supabase.from('user_library')
-        .delete()
-        .eq('user_id', user!.id)
-        .eq('show_id', showId)
-        .eq('item_type', 'follow');
+        .delete().eq('user_id', user.id).eq('show_id', showId).eq('item_type', 'follow');
     } else {
       await supabase.from('user_library')
-        .insert({ user_id: user!.id, show_id: showId, item_type: 'follow' });
+        .insert({ user_id: user.id, show_id: showId, item_type: 'follow' });
     }
     refetchShows();
   };
-
-  const allLeaguePills = [{ slug: 'all', short_name: 'All', icon: '🏆', primary_color: '#E53935' }, ...(leagues || [])];
 
   if (leaguesLoading) {
     return (
@@ -447,6 +459,8 @@ export default function BrowseScreen() {
     );
   }
 
+  const leagueShortName = (leagues || []).find((l: any) => l.slug === selectedLeague)?.short_name || '';
+
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
@@ -455,54 +469,42 @@ export default function BrowseScreen() {
         <Text style={{ color: '#888', fontSize: 14, marginTop: 2 }}>Find your next favorite podcast</Text>
       </View>
 
-{/* League switcher */}
-<View style={{ marginBottom: 16 }}>
-  <ScrollView 
-    horizontal 
-    showsHorizontalScrollIndicator={false}
-    bounces={true}
-    contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-    <LeaguePill label="All" selected={selectedLeague === 'all'} onPress={() => setSelectedLeague('all')} />
-    {(leagues || []).map(league => (
-      <LeaguePill
-        key={league.slug}
-        label={league.short_name}
-        selected={selectedLeague === league.slug}
-        onPress={() => setSelectedLeague(league.slug)}
-      />
-    ))}
-  </ScrollView>
-</View>
+      {/* League switcher */}
+      <View style={{ marginBottom: 16 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+          <LeaguePill label="All" selected={selectedLeague === 'all'} onPress={() => setSelectedLeague('all')} />
+          {(leagues || []).map(league => (
+            <LeaguePill
+              key={league.slug}
+              label={league.short_name}
+              selected={selectedLeague === league.slug}
+              onPress={() => setSelectedLeague(league.slug)}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {selectedLeague === 'all' ? (
-          // ── All tab ──────────────────────────────────────────────
+          // ── All tab ──────────────────────────────────────────────────────────
           <>
-            {/* National Shows shelf */}
-            <View style={{ marginBottom: 12, marginTop: 12 }}>
-              <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
-                National Shows
-              </Text>
-              <Text style={{ color: '#888', fontSize: 13, paddingHorizontal: 16, marginBottom: 12, marginTop: -8 }}>
-                The biggest voices in sports
-              </Text>
-              {loadingNational ? (
-                <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16 }}>
-                  {(nationalShows || []).map((show: any) => (
-                    <ShowCard
-                      key={show.id}
-                      show={show}
-                      isFollowing={followedShowIds.includes(show.id)}
-                      onToggle={() => handleShowToggle(show.id)}
-                    />
-                  ))}
-                </ScrollView>
-              )}
-            </View>
+            {/* National Shows */}
+            <SectionShelf
+              title="National Shows"
+              subtitle="The biggest voices in sports"
+              loading={loadingNational}
+            >
+              {(nationalShows || []).map((show: any) => (
+                <ShowCard
+                  key={show.id} show={show}
+                  isFollowing={followedShowIds.includes(show.id)}
+                  onToggle={() => handleShowToggle(show.id)}
+                />
+              ))}
+            </SectionShelf>
 
             {/* My Teams */}
             <View style={{ marginBottom: 28 }}>
@@ -538,58 +540,187 @@ export default function BrowseScreen() {
               )}
             </View>
 
-            {/* Trending Now */}
-            <View style={{ marginBottom: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
-                Trending Now
-              </Text>
-              {loadingTrending
-                ? <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
-                : (trendingStories || []).map((story: any) => (
-                    <TrendingStoryRow key={story.id} story={story} allTeams={allTeams || []} />
-                  ))
-              }
-            </View>
+            {/* Scoreboard */}
+            {(loadingScoreboard || gameStories.length > 0) && (
+              <SectionShelf
+                title="Scoreboard"
+                titleRight={
+                  <TouchableOpacity onPress={() => navigation.navigate('Trending')}>
+                    <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '600' }}>See All</Text>
+                  </TouchableOpacity>
+                }
+                loading={loadingScoreboard}
+              >
+                {gameStories.map(story => (
+                  <ScoreboardCard key={story.id} story={story} />
+                ))}
+              </SectionShelf>
+            )}
+
+            {/* Regional Shows */}
+            {(loadingRegional || regionalShows.length > 0) && (
+              <SectionShelf title="Regional Shows" loading={loadingRegional}>
+                {regionalShows.map((show: any) => (
+                  <ShowCard
+                    key={show.id} show={show}
+                    isFollowing={followedShowIds.includes(show.id)}
+                    onToggle={() => handleShowToggle(show.id)}
+                  />
+                ))}
+              </SectionShelf>
+            )}
+
+            {/* Popular Episodes */}
+            {(loadingPopular || popularEpisodes.length > 0) && (
+              <View style={{ marginBottom: 28 }}>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 4 }}>
+                  Popular Episodes
+                </Text>
+                <Text style={{ color: '#888', fontSize: 13, paddingHorizontal: 16, marginBottom: 12 }}>
+                  What's dropping today
+                </Text>
+                {loadingPopular ? (
+                  <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+                ) : (
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#1C1C1C' }}>
+                    {popularEpisodes.map((ep, i) => (
+                      <View key={ep.id}>
+                        <PopularEpisodeRow episode={ep} />
+                        {i < popularEpisodes.length - 1 && (
+                          <View style={{ height: 1, backgroundColor: '#1C1C1C', marginLeft: 80 }} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </>
         ) : (
-          // ── Sport tab ─────────────────────────────────────────────
+          // ── Sport tab ─────────────────────────────────────────────────────
           <>
             {/* Teams grid */}
             <View style={{ marginBottom: 28 }}>
               <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 16 }}>
                 Teams
               </Text>
-              <TeamGrid
-                teams={leagueTeams}
-                followedSlugs={followedSlugs}
-                onToggle={handleTeamToggle}
-              />
+              <TeamGrid teams={leagueTeams} followedSlugs={followedSlugs} onToggle={handleTeamToggle} />
             </View>
 
-            {/* League shows */}
-            <View style={{ marginBottom: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
-                Popular {(leagues || []).find((l: any) => l.slug === selectedLeague)?.short_name} Shows
-              </Text>
-              {loadingShows ? (
-                <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16 }}>
-                  {(leagueShows || []).map((show: any) => (
-                    <ShowCard
-                      key={show.id}
-                      show={show}
-                      isFollowing={followedShowIds.includes(show.id)}
-                      onToggle={() => handleShowToggle(show.id)}
-                    />
-                  ))}
-                </ScrollView>
-              )}
-            </View>
+            {/* Popular league shows */}
+            <SectionShelf
+              title={`Popular ${leagueShortName} Shows`}
+              loading={loadingShows}
+            >
+              {(leagueShows || []).map((show: any) => (
+                <ShowCard
+                  key={show.id} show={show}
+                  isFollowing={followedShowIds.includes(show.id)}
+                  onToggle={() => handleShowToggle(show.id)}
+                />
+              ))}
+            </SectionShelf>
+
+            {/* National shows for this sport */}
+            {(loadingNational || (nationalShows || []).length > 0) && (
+              <SectionShelf
+                title={`${leagueShortName} National Shows`}
+                loading={loadingNational}
+              >
+                {(nationalShows || []).map((show: any) => (
+                  <ShowCard
+                    key={show.id} show={show}
+                    isFollowing={followedShowIds.includes(show.id)}
+                    onToggle={() => handleShowToggle(show.id)}
+                  />
+                ))}
+              </SectionShelf>
+            )}
+
+            {/* Scoreboard */}
+            {(loadingScoreboard || gameStories.length > 0) && (
+              <SectionShelf title="Scoreboard" loading={loadingScoreboard}>
+                {gameStories.map(story => (
+                  <ScoreboardCard key={story.id} story={story} />
+                ))}
+              </SectionShelf>
+            )}
+
+            {/* Regional shows */}
+            {(loadingRegional || regionalShows.length > 0) && (
+              <SectionShelf title="Regional Shows" loading={loadingRegional}>
+                {regionalShows.map((show: any) => (
+                  <ShowCard
+                    key={show.id} show={show}
+                    isFollowing={followedShowIds.includes(show.id)}
+                    onToggle={() => handleShowToggle(show.id)}
+                  />
+                ))}
+              </SectionShelf>
+            )}
+
+            {/* Popular Episodes */}
+            {(loadingPopular || popularEpisodes.length > 0) && (
+              <View style={{ marginBottom: 28 }}>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
+                  Popular Episodes
+                </Text>
+                {loadingPopular ? (
+                  <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+                ) : (
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#1C1C1C' }}>
+                    {popularEpisodes.map((ep, i) => (
+                      <View key={ep.id}>
+                        <PopularEpisodeRow episode={ep} />
+                        {i < popularEpisodes.length - 1 && (
+                          <View style={{ height: 1, backgroundColor: '#1C1C1C', marginLeft: 80 }} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+// ─── SectionShelf helper ─────────────────────────────────────────────────────
+
+function SectionShelf({
+  title, subtitle, titleRight, loading, children,
+}: {
+  title: string;
+  subtitle?: string;
+  titleRight?: React.ReactNode;
+  loading?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ marginBottom: 28 }}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: subtitle ? 4 : 12,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>{title}</Text>
+        {titleRight}
+      </View>
+      {subtitle && (
+        <Text style={{ color: '#888', fontSize: 13, paddingHorizontal: 16, marginBottom: 12 }}>
+          {subtitle}
+        </Text>
+      )}
+      {loading ? (
+        <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}>
+          {children}
+        </ScrollView>
+      )}
     </View>
   );
 }
