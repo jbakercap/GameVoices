@@ -91,15 +91,23 @@ interface VideoCardProps {
   isActive: boolean;
   isMuted: boolean;
   onMuteToggle: () => void;
+  onLoadError?: () => void;
   overlay: React.ReactNode;
   topOverlay?: React.ReactNode;
 }
 
 function VideoCard({
-  videoUrl, thumbnailUrl, isActive, isMuted, onMuteToggle, overlay, topOverlay,
+  videoUrl, thumbnailUrl, isActive, isMuted, onMuteToggle, onLoadError, overlay, topOverlay,
 }: VideoCardProps) {
   const [ended, setEnded] = useState(false);
   const [ready, setReady] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  // Refs so statusChange callback always sees current values without re-subscribing
+  const isActiveRef = useRef(isActive);
+  const pausedRef = useRef(paused);
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   const player = useVideoPlayer(videoUrl, p => {
     p.loop = false;
@@ -111,17 +119,21 @@ function VideoCard({
     player.muted = isMuted;
   }, [isMuted]);
 
-  // Autoplay / pause based on visibility
+  // Autoplay / pause when visibility or manual pause changes
   useEffect(() => {
-    if (!ready) return;
-    if (isActive) {
+    if (isActive && !paused) {
       setEnded(false);
-      player.currentTime = 0;
       player.play();
-    } else {
+    } else if (!isActive && player.playing) {
+      // Only pause if actually playing — don't disrupt pre-loaded idle players
       player.pause();
     }
-  }, [isActive, ready]);
+  }, [isActive, ready, paused]);
+
+  // Reset manual pause when scrolling away so next view auto-plays
+  useEffect(() => {
+    if (!isActive) setPaused(false);
+  }, [isActive]);
 
   // Listen for playback end
   useEffect(() => {
@@ -129,25 +141,37 @@ function VideoCard({
     return () => sub.remove();
   }, [player]);
 
-  // Listen for ready state
+  // Listen for ready — call play() directly in callback (bypasses React render cycle)
   useEffect(() => {
-    const sub = player.addListener('statusChange', ({ status }) => {
-      if (status === 'readyToPlay') setReady(true);
+    const tryPlay = () => {
+      if (isActiveRef.current && !pausedRef.current) player.play();
+    };
+
+    if ((player as any).status === 'readyToPlay') {
+      setReady(true);
+      tryPlay();
+    }
+
+    const sub = player.addListener('statusChange', ({ status, error }: any) => {
+      if (status === 'readyToPlay') {
+        setReady(true);
+        tryPlay();
+      } else if (status === 'error' || error) {
+        // Dead/expired URL — notify parent to skip this item
+        onLoadError?.();
+      }
     });
     return () => sub.remove();
   }, [player]);
 
-  const handleTap = () => {
+  const handlePlayPause = () => {
     if (ended) return;
-    if (player.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
+    setPaused(p => !p);
   };
 
   const handleReplay = () => {
     setEnded(false);
+    setPaused(false);
     player.currentTime = 0;
     player.play();
   };
@@ -163,24 +187,18 @@ function VideoCard({
         />
       )}
 
-      {/* Video */}
-      <TouchableOpacity
+      {/* Video — not tappable, scroll gestures pass through cleanly */}
+      <VideoView
+        player={player}
         style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={handleTap}
-      >
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          nativeControls={false}
-        />
-      </TouchableOpacity>
+        contentFit="contain"
+        nativeControls={false}
+      />
 
-      {/* Top overlay (e.g. tweet author / team link) */}
+      {/* Top overlay */}
       {topOverlay}
 
-      {/* Bottom gradient overlay */}
+      {/* Bottom overlay */}
       <View style={styles.bottomOverlay} pointerEvents="box-none">
         {overlay}
         {/* Mute button */}
@@ -188,6 +206,19 @@ function VideoCard({
           <Text style={styles.muteBtnText}>{isMuted ? '🔇' : '🔊'}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Dedicated play/pause button — center of screen */}
+      {!ended && ready && (
+        <TouchableOpacity
+          style={styles.playPauseBtn}
+          onPress={handlePlayPause}
+          activeOpacity={0.8}
+        >
+          <View style={styles.playPauseBtnInner}>
+            <Text style={styles.playPauseBtnIcon}>{paused ? '▶' : '⏸'}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Loading indicator */}
       {!ready && (
@@ -211,11 +242,12 @@ function VideoCard({
 
 // ─── X / Buzz card ────────────────────────────────────────────────────────────
 
-function BuzzCard({ post, isActive, isMuted, onMuteToggle }: {
+function BuzzCard({ post, isActive, isMuted, onMuteToggle, onLoadError }: {
   post: WatchVideoPost;
   isActive: boolean;
   isMuted: boolean;
   onMuteToggle: () => void;
+  onLoadError?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const cleanText = post.text
@@ -275,6 +307,7 @@ function BuzzCard({ post, isActive, isMuted, onMuteToggle }: {
       isActive={isActive}
       isMuted={isMuted}
       onMuteToggle={onMuteToggle}
+      onLoadError={onLoadError}
       overlay={overlay}
     />
   );
@@ -282,11 +315,12 @@ function BuzzCard({ post, isActive, isMuted, onMuteToggle }: {
 
 // ─── Clips card ───────────────────────────────────────────────────────────────
 
-function ClipCard({ clip, isActive, isMuted, onMuteToggle, creatorProfile }: {
+function ClipCard({ clip, isActive, isMuted, onMuteToggle, onLoadError, creatorProfile }: {
   clip: VideoClip;
   isActive: boolean;
   isMuted: boolean;
   onMuteToggle: () => void;
+  onLoadError?: () => void;
   creatorProfile?: CreatorProfile | null;
 }) {
   const navigation = useNavigation<any>();
@@ -356,6 +390,7 @@ function ClipCard({ clip, isActive, isMuted, onMuteToggle, creatorProfile }: {
       isActive={isActive}
       isMuted={isMuted}
       onMuteToggle={onMuteToggle}
+      onLoadError={onLoadError}
       overlay={overlay}
       topOverlay={topOverlay}
     />
@@ -468,8 +503,9 @@ export default function WatchScreen() {
       isActive={index === activeIndex}
       isMuted={isMuted}
       onMuteToggle={() => setIsMuted(m => !m)}
+      onLoadError={() => setActiveIndex(i => Math.min(i + 1, posts.length - 1))}
     />
-  ), [activeIndex, isMuted]);
+  ), [activeIndex, isMuted, posts.length]);
 
   const renderClipItem = useCallback(({ item, index }: { item: VideoClip; index: number }) => (
     <ClipCard
@@ -477,9 +513,10 @@ export default function WatchScreen() {
       isActive={index === activeIndex}
       isMuted={isMuted}
       onMuteToggle={() => setIsMuted(m => !m)}
+      onLoadError={() => setActiveIndex(i => Math.min(i + 1, clips.length - 1))}
       creatorProfile={item.created_by ? creatorProfiles[item.created_by] : null}
     />
-  ), [activeIndex, isMuted, creatorProfiles]);
+  ), [activeIndex, isMuted, creatorProfiles, clips.length]);
 
   const buzzKey = useCallback((item: WatchVideoPost) => item.id, []);
   const clipKey = useCallback((item: VideoClip) => item.id, []);
@@ -565,9 +602,8 @@ export default function WatchScreen() {
               getItemLayout={getItemLayout}
               viewabilityConfig={viewabilityConfig.current}
               onViewableItemsChanged={onViewableItemsChanged.current}
-              removeClippedSubviews
-              windowSize={3}
-              initialNumToRender={2}
+              windowSize={5}
+              initialNumToRender={3}
               maxToRenderPerBatch={2}
             />
           </>
@@ -797,6 +833,27 @@ const styles = StyleSheet.create({
   },
   muteBtnText: {
     fontSize: 20,
+  },
+  playPauseBtn: {
+    position: 'absolute',
+    bottom: 90,
+    right: 16,
+    zIndex: 6,
+  },
+  playPauseBtnInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  playPauseBtnIcon: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 2,
   },
   // Buzz card
   buzzMeta: {

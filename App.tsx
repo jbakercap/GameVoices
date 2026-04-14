@@ -46,11 +46,9 @@ function TabNavigator({ navigation }: any) {
       tabBarIcon: ({ color, size }) => {
         const icons: Record<string, string> = {
           Home: 'home',
-          Browse: 'compass-outline',
+          Clips: 'film-outline',
+          Discover: 'compass-outline',
           Search: 'search-outline',
-          Watch: 'play-circle-outline',
-          Library: 'bookmark-outline',
-          'My Roster': 'people-outline',
           Profile: 'person-outline',
         };
         return <Ionicons name={icons[route.name] as any} size={size} color={color} />;
@@ -60,14 +58,12 @@ function TabNavigator({ navigation }: any) {
         name="Home"
         children={() => <HomeScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
       />
-      <Tab.Screen name="Browse" component={BrowseScreen} />
+      <Tab.Screen name="Clips" component={WatchScreen} />
+      <Tab.Screen name="Discover" component={BrowseScreen} />
       <Tab.Screen
         name="Search"
         children={() => <SearchScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
       />
-      <Tab.Screen name="Watch" component={WatchScreen} />
-      <Tab.Screen name="Library" component={LibraryScreen} />
-      <Tab.Screen name="My Roster" component={RosterScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -89,6 +85,8 @@ function MainApp() {
         <Stack.Screen name="PlaylistDetail" component={PlaylistScreen} />
         <Stack.Screen name="SubmitShow" component={SubmitShowScreen} />
         <Stack.Screen name="Trending" component={TrendingScreen} />
+        <Stack.Screen name="LibraryDetail" component={LibraryScreen} />
+        <Stack.Screen name="MyRoster" component={RosterScreen} />
       </Stack.Navigator>
       <MiniPlayer onPress={openFullPlayer} />
       <Modal

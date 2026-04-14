@@ -1,114 +1,57 @@
 import React, { useState } from 'react';
 import {
-    View, Text, ScrollView, FlatList,
-    TouchableOpacity, ActivityIndicator
-  } from 'react-native';
-import { useProfile } from '../hooks/useProfile';
-import { useTeamStories, Story } from '../hooks/useTeamStories';
-import { useTeamsBySlug } from '../hooks/useTeamsBySlug';
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions,
+} from 'react-native';
 import { Image } from 'expo-image';
-import { useTrendingPlayers, TrendingPlayer } from '../hooks/useTrendingPlayers';
+import { Ionicons } from '@expo/vector-icons';
+import { useProfile } from '../hooks/useProfile';
+import { useTeamStories } from '../hooks/useTeamStories';
+import { useTeamsBySlug } from '../hooks/useTeamsBySlug';
+import { useTrendingPlayers } from '../hooks/useTrendingPlayers';
 import { useYourLineup } from '../hooks/useYourlineup';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useFollowedPlayers } from '../hooks/useFollowedPlayers';
 import { useToggleFollowPlayer } from '../hooks/mutations/useToggleFollowPlayer';
-import { TodayRecapCard } from '../components/TodayRecapCard';
 import { FromPlayersYouFollowShelf } from '../components/FromPlayersYouFollowShelf';
 import { ScoreboardCard } from '../components/ScoreboardCard';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
+import { useTodayRecap } from '../components/TodayRecapCard';
 import { useUserTeams } from '../hooks/useUserTeams';
 
-const STORY_TYPE_COLORS: Record<string, string> = {
-  game_result: '#4CAF50',
-  game_preview: '#2196F3',
-  trade: '#FF9800',
-  signing: '#FF9800',
-  injury: '#F44336',
-  general: '#888',
-  player_emergence: '#9C27B0',
-  award_candidacy: '#FFD700',
-  coaching: '#00BCD4',
-  milestone: '#FFD700',
-  draft: '#888',
-  offseason: '#888',
-};
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH * 0.78;
 
-function StoryCard({ story }: { story: Story }) {
-  const navigation = useNavigation<any>();
-  const typeColor = STORY_TYPE_COLORS[story.story_type] || '#888';
-  const mins = Math.round(story.totalDuration / 60);
+// ─── Featured Carousel ────────────────────────────────────────────────────────
 
-  return (
-    <TouchableOpacity 
-      onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
-      style={{
-        backgroundColor: '#1E1E1E', borderRadius: 12,
-        padding: 14, marginHorizontal: 16, marginBottom: 10,
-      }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <View style={{
-          backgroundColor: typeColor + '22', borderRadius: 4,
-          paddingHorizontal: 8, paddingVertical: 3,
-        }}>
-          <Text style={{ color: typeColor, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>
-            {story.story_type.replace(/_/g, ' ')}
-          </Text>
-        </View>
-      </View>
-      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', lineHeight: 22, marginBottom: 10 }}>
-        {story.headline}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Text style={{ color: '#888', fontSize: 13 }}>🎙 {story.episode_count} eps</Text>
-        <Text style={{ color: '#888', fontSize: 13 }}>📻 {story.show_count} shows</Text>
-        {mins > 0 && <Text style={{ color: '#888', fontSize: 13 }}>⏱ {mins}m</Text>}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function TeamChip({ slug, label, selected, onPress }: {
-  slug: string; label: string; selected: boolean; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} style={{
-      paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-      backgroundColor: selected ? '#E53935' : '#2A2A2A', marginRight: 8,
-    }}>
-      <Text style={{ color: selected ? '#fff' : '#aaa', fontWeight: '600', fontSize: 13 }}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function YourLineupShelf() {
+function FeaturedCarousel() {
   const { data: episodes, isLoading } = useYourLineup();
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
 
   if (isLoading || !episodes || episodes.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{
-        color: '#fff', fontSize: 20, fontWeight: 'bold',
-        paddingHorizontal: 16, marginBottom: 12
-      }}>
-        Your Lineup
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+    <View style={{ marginBottom: 28 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        pagingEnabled={false}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH + 12}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+      >
         {episodes.map((ep) => {
-          const mins = Math.floor(ep.time_remaining / 60);
-          const isCurrentEpisode = currentEpisode?.id === ep.id;
+          const mins = Math.round(ep.time_remaining / 60);
+          const totalMins = Math.round(ep.duration_seconds / 60);
+          const isCurrentEpisode = currentEpisode?.id === ep.episodeId;
+          const isRecent = true; // show NEW badge for in-progress episodes
 
           const handlePlay = () => {
             if (isCurrentEpisode) {
               togglePlayPause();
             } else {
               playEpisode({
-                id: ep.id,
+                id: ep.episodeId,
                 title: ep.title,
                 showTitle: ep.show_name || '',
                 artworkUrl: ep.artwork_url || undefined,
@@ -119,32 +62,43 @@ function YourLineupShelf() {
           };
 
           return (
-            <TouchableOpacity key={ep.id} onPress={handlePlay} style={{
-              width: 160, backgroundColor: '#1E1E1E',
-              borderRadius: 12, overflow: 'hidden',
+            <View key={ep.id} style={{
+              width: CARD_WIDTH, borderRadius: 16, overflow: 'hidden',
+              backgroundColor: '#1E1E1E',
             }}>
               {/* Artwork */}
-              <View style={{ width: 160, height: 160, backgroundColor: '#2A2A2A' }}>
+              <View style={{ width: CARD_WIDTH, height: 240, backgroundColor: '#2A2A2A' }}>
                 {ep.artwork_url ? (
                   <Image
                     source={{ uri: ep.artwork_url }}
-                    style={{ width: 160, height: 160 }}
+                    style={{ width: CARD_WIDTH, height: 240 }}
                     contentFit="cover"
                   />
                 ) : (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 40 }}>🎙</Text>
+                    <Text style={{ fontSize: 48 }}>🎙</Text>
                   </View>
                 )}
-                {/* Play button overlay */}
+                {/* Dark gradient overlay */}
                 <View style={{
-                  position: 'absolute', bottom: 8, right: 8,
-                  width: 32, height: 32, borderRadius: 16,
-                  backgroundColor: isCurrentEpisode && isPlaying ? '#fff' : '#E53935',
-                  alignItems: 'center', justifyContent: 'center',
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 140,
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                }} />
+                {/* NEW badge */}
+                <View style={{
+                  position: 'absolute', top: 12, right: 12,
+                  backgroundColor: '#22C55E', borderRadius: 20,
+                  paddingHorizontal: 10, paddingVertical: 4,
                 }}>
-                  <Text style={{ color: isCurrentEpisode && isPlaying ? '#E53935' : '#fff', fontSize: 12, marginLeft: 2 }}>
-                    {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>NEW</Text>
+                </View>
+                {/* Title + meta overlay */}
+                <View style={{ position: 'absolute', bottom: 48, left: 14, right: 14 }}>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 }}
+                    numberOfLines={2}>{ep.title}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 }}>
+                    {totalMins > 0 ? `${totalMins} min` : ''}
+                    {mins > 0 && totalMins > 0 ? ` · ${mins}m left` : ''}
                   </Text>
                 </View>
               </View>
@@ -155,19 +109,27 @@ function YourLineupShelf() {
                   width: `${Math.round(ep.progress * 100)}%` as any,
                 }} />
               </View>
-              {/* Info */}
-              <View style={{ padding: 8 }}>
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}
-                  numberOfLines={2}>{ep.title}</Text>
-                {ep.show_name && (
-                  <Text style={{ color: '#888', fontSize: 11, marginTop: 3 }}
-                    numberOfLines={1}>{ep.show_name}</Text>
-                )}
-                <Text style={{ color: '#E53935', fontSize: 11, marginTop: 4, fontWeight: '600' }}>
-                  {mins}m left
-                </Text>
+              {/* Buttons row */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center',
+                justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12,
+              }}>
+                <TouchableOpacity onPress={handlePlay} style={{
+                  width: 44, height: 44, borderRadius: 22,
+                  backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 14, marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}>
+                    {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{
+                  width: 36, height: 36, borderRadius: 18,
+                  backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ color: '#aaa', fontSize: 16, letterSpacing: 1 }}>···</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           );
         })}
       </ScrollView>
@@ -175,43 +137,57 @@ function YourLineupShelf() {
   );
 }
 
-function TeamLogoRow({ teams }: { teams: any[] }) {
-  if (!teams || teams.length === 0) return null;
+// ─── Scoreboard Section ───────────────────────────────────────────────────────
+
+function ScoreboardSection({
+  teamSlugs, teams, onNavigate,
+}: {
+  teamSlugs: string[];
+  teams: any[];
+  onNavigate?: (screen: string, params: any) => void;
+}) {
+  const { data: stories, isLoading } = useTodayRecap(teamSlugs);
+
+  if (isLoading || !stories || stories.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
-        My Teams
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-        {teams.map((team) => (
-          <TouchableOpacity key={team.id} style={{
-            width: 64, height: 64, borderRadius: 32,
-            backgroundColor: '#fff', overflow: 'hidden',
-            borderWidth: 3, borderColor: team.primary_color || '#333',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {team.logo_url ? (
-              <Image
-                source={{ uri: team.logo_url }}
-                style={{ width: 52, height: 52 }}
-                contentFit="contain"
-              />
-            ) : (
-              <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 14 }}>
-                {team.short_name?.slice(0, 2)}
-              </Text>
-            )}
-          </TouchableOpacity>
-        ))}
+    <View style={{ marginBottom: 28 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Scoreboard</Text>
+        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
+          Game results covered across multiple podcasts
+        </Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+      >
+        {stories.map((story) => {
+          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#E53935';
+          const matchedTeam = teams?.find(t => story.team_slugs?.includes(t.slug));
+          return (
+            <ScoreboardCard
+              key={story.id}
+              story={story as any}
+              teamColor={teamColor}
+              matchedTeam={matchedTeam}
+              onNavigate={onNavigate}
+              compact
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );
 }
 
-function TrendingPlayersShelf({ teamSlugs, onNavigate }: { 
-  teamSlugs: string[], onNavigate?: (screen: string, params: any) => void 
+// ─── Who's Buzzing ────────────────────────────────────────────────────────────
+
+function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
+  teamSlugs: string[];
+  onNavigate?: (screen: string, params: any) => void;
 }) {
   const { data: followedPlayers = [] } = useFollowedPlayers();
   const toggleFollow = useToggleFollowPlayer();
@@ -226,13 +202,16 @@ function TrendingPlayersShelf({ teamSlugs, onNavigate }: {
   if (isLoading || !players || players.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{
-        color: '#fff', fontSize: 20, fontWeight: 'bold',
-        paddingHorizontal: 16, marginBottom: 12
-      }}>
-        Trending Players
-      </Text>
+    <View style={{ marginBottom: 28 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Who's Buzzing</Text>
+          <Ionicons name="chevron-forward" size={20} color="#fff" style={{ marginTop: 2 }} />
+        </TouchableOpacity>
+        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
+          Most mentioned in podcasts this week
+        </Text>
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
         {players.map((player) => {
@@ -241,48 +220,43 @@ function TrendingPlayersShelf({ teamSlugs, onNavigate }: {
           return (
             <TouchableOpacity
               onPress={() => onNavigate?.('PlayerDetail', { playerSlug: player.slug })}
-              key={player.id} style={{ alignItems: 'center', width: 72 }}>
-              {/* Avatar circle */}
-              <View style={{ position: 'relative' }}>
+              key={player.id}
+              style={{ alignItems: 'center', width: 80 }}
+            >
+              <View style={{ position: 'relative', marginBottom: 8 }}>
                 <View style={{
-                  width: 64, height: 64, borderRadius: 32,
+                  width: 68, height: 68, borderRadius: 34,
                   borderWidth: 3, borderColor: ringColor,
-                  backgroundColor: '#2A2A2A',
-                  overflow: 'hidden', marginBottom: 6,
+                  backgroundColor: '#2A2A2A', overflow: 'hidden',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
                   {player.headshot_url ? (
-                    <Image
-                      source={{ uri: player.headshot_url }}
-                      style={{ width: 64, height: 64 }}
-                      contentFit="cover"
-                    />
+                    <Image source={{ uri: player.headshot_url }}
+                      style={{ width: 68, height: 68 }} contentFit="cover" />
                   ) : (
-                    <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>
+                    <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold' }}>
                       {player.name.charAt(0)}
                     </Text>
                   )}
                 </View>
-                {/* Follow heart button */}
                 <TouchableOpacity
-                  onPress={(e) => {
-                    toggleFollow.mutate({ playerId: player.id, isFollowing: isFollowed });
-                  }}
+                  onPress={() => toggleFollow.mutate({ playerId: player.id, isFollowing: isFollowed })}
                   style={{
-                    position: 'absolute', bottom: 4, right: -4,
-                    width: 20, height: 20, borderRadius: 10,
-                    backgroundColor: isFollowed ? '#E53935' : '#2A2A2A',
-                    borderWidth: 1, borderColor: '#444',
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 22, height: 22, borderRadius: 11,
+                    backgroundColor: isFollowed ? '#E53935' : '#1E1E1E',
+                    borderWidth: 1.5, borderColor: '#333',
                     alignItems: 'center', justifyContent: 'center',
-                  }}>
-                  <Text style={{ fontSize: 10 }}>{isFollowed ? '❤️' : '🤍'}</Text>
+                  }}
+                >
+                  <Ionicons
+                    name={isFollowed ? 'heart' : 'heart-outline'}
+                    size={11} color={isFollowed ? '#fff' : '#888'}
+                  />
                 </TouchableOpacity>
               </View>
-              {/* Player name */}
-              <Text style={{
-                color: '#ccc', fontSize: 11, textAlign: 'center',
-              }} numberOfLines={2}>
-                {player.name.split(' ').pop()}
+              <Text style={{ color: '#ccc', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>
+                {player.name}
               </Text>
             </TouchableOpacity>
           );
@@ -292,84 +266,55 @@ function TrendingPlayersShelf({ teamSlugs, onNavigate }: {
   );
 }
 
-export default function HomeScreen({ onNavigate }: { onNavigate?: (screen: string, params: any) => void }) {
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
+function HomeFooter() {
+  return (
+    <View style={{
+      marginHorizontal: 16, marginTop: 8, marginBottom: 32,
+      backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24,
+      alignItems: 'center',
+    }}>
+      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 16 }}>
+        Connect with GameVoices:
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 24, marginBottom: 16 }}>
+        <TouchableOpacity style={{
+          width: 44, height: 44, borderRadius: 22,
+          borderWidth: 1.5, borderColor: '#444',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name="logo-instagram" size={22} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{
+          width: 44, height: 44, borderRadius: 22,
+          borderWidth: 1.5, borderColor: '#444',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name="logo-tiktok" size={22} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{
+          width: 44, height: 44, borderRadius: 22,
+          borderWidth: 1.5, borderColor: '#444',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name="logo-snapchat" size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <Text style={{ color: '#555', fontSize: 12 }}>© 2026 GameVoices</Text>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
+export default function HomeScreen({ onNavigate }: {
+  onNavigate?: (screen: string, params: any) => void;
+}) {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const teamSlugs = profile?.topic_slugs || [];
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-  const activeTeam = selectedTeam || teamSlugs[0] || 'nba-celtics';
-  const { data: stories, isLoading: storiesLoading } = useTeamStories(activeTeam);
   const { data: teams } = useTeamsBySlug(teamSlugs);
   const { data: userTeams = [] } = useUserTeams();
-
-  // ✅ Define as a memoized component, not an inline arrow function
-  const ListHeader = React.useMemo(() => (
-    <>
-      <YourLineupShelf />
-      <TodayRecapCard
-        teamSlugs={teamSlugs}
-        teams={teams || []}
-        onNavigate={onNavigate}
-      />
-      <FromPlayersYouFollowShelf onNavigate={onNavigate} />
-      <TeamLogoRow teams={teams || []} />
-      <TrendingPlayersShelf teamSlugs={teamSlugs} onNavigate={onNavigate} />
-
-      {/* Scoreboard — game_result stories */}
-      {(stories || [])
-        .filter(s => s.story_type === 'game_result')
-        .slice(0, 5)
-        .map(story => {
-          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#E53935';
-          return (
-            <ScoreboardCard
-              key={story.id}
-              story={{
-                ...story,
-                showArtworks: [],
-                showCountActual: story.show_count || 0,
-                totalDuration: 0,
-                episodes: [],
-              }}
-              teamColor={teamColor}
-              onNavigate={onNavigate}
-            />
-          );
-        })
-      }
-
-      {teamSlugs.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          {teamSlugs.map((slug) => {
-            const team = teams?.find(t => t.slug === slug);
-            const label = team?.short_name || slug.split('-').pop() || slug;
-            return (
-              <TeamChip
-                key={slug}
-                slug={slug}
-                label={label}
-                selected={activeTeam === slug}
-                onPress={() => setSelectedTeam(slug)}
-              />
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {/* Show Discovery */}
-      <ShowDiscoverySections
-        userTeams={userTeams}
-        followedShowIds={[]}
-        onNavigate={onNavigate}
-      />
-
-      {storiesLoading && (
-        <View style={{ padding: 32, alignItems: 'center' }}>
-          <ActivityIndicator color="#E53935" />
-        </View>
-      )}
-    </>
-  ), [teamSlugs, teams, stories, activeTeam, storiesLoading, onNavigate, userTeams]);
 
   if (profileLoading) {
     return (
@@ -381,24 +326,73 @@ export default function HomeScreen({ onNavigate }: { onNavigate?: (screen: strin
 
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
-      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 16 }}>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>GameVoices</Text>
-        <Text style={{ color: '#888', fontSize: 14, marginTop: 2 }}>What's being talked about</Text>
+      {/* Sticky top filter bar */}
+      <View style={{
+        paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: '#121212',
+      }}>
+        {/* Filter icon */}
+        <TouchableOpacity style={{
+          width: 42, height: 42, borderRadius: 12,
+          backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name="options-outline" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Team circles */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 10 }}>
+          {(teams || []).map((team) => (
+            <View key={team.id} style={{
+              width: 46, height: 46, borderRadius: 23,
+              backgroundColor: '#fff', overflow: 'hidden',
+              borderWidth: 3, borderColor: team.primary_color || '#333',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {team.logo_url ? (
+                <Image source={{ uri: team.logo_url }}
+                  style={{ width: 36, height: 36 }} contentFit="contain" />
+              ) : (
+                <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 12 }}>
+                  {team.short_name?.slice(0, 2)}
+                </Text>
+              )}
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
-      <FlatList
-        data={(stories || []).filter(s => s.story_type !== 'game_result')}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ListHeaderComponent={() => ListHeader}
-        renderItem={({ item }) => <StoryCard story={item} />}
-        ListEmptyComponent={() => !storiesLoading ? (
-          <View style={{ padding: 32, alignItems: 'center' }}>
-            <Text style={{ color: '#888', fontSize: 15 }}>No stories yet for this team</Text>
-          </View>
-        ) : null}
-      />
+      {/* Scrollable content */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        {/* Featured carousel */}
+        <View style={{ marginTop: 8 }}>
+          <FeaturedCarousel />
+        </View>
+
+        {/* Scoreboard */}
+        <ScoreboardSection
+          teamSlugs={teamSlugs}
+          teams={teams || []}
+          onNavigate={onNavigate}
+        />
+
+        {/* Your Players */}
+        <FromPlayersYouFollowShelf onNavigate={onNavigate} />
+
+        {/* Who's Buzzing */}
+        <WhoBuzzingShelf teamSlugs={teamSlugs} onNavigate={onNavigate} />
+
+        {/* Show Discovery */}
+        <ShowDiscoverySections
+          userTeams={userTeams}
+          followedShowIds={[]}
+          onNavigate={onNavigate}
+        />
+
+        {/* Footer */}
+        <HomeFooter />
+      </ScrollView>
     </View>
   );
 }

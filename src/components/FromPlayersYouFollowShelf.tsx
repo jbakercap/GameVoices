@@ -7,14 +7,6 @@ import { useFollowedPlayers } from '../hooks/useFollowedPlayers';
 import { useFollowedPlayerEpisodes } from '../hooks/useFollowedPlayerEpisodes';
 import { usePlayer } from '../contexts/PlayerContext';
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
-}
-
 interface Props {
   onNavigate?: (screen: string, params: any) => void;
 }
@@ -27,13 +19,15 @@ export function FromPlayersYouFollowShelf({ onNavigate }: Props) {
   if (followedPlayers.length === 0 || playerEpisodes.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{
-        color: '#fff', fontSize: 20, fontWeight: 'bold',
-        paddingHorizontal: 16, marginBottom: 12,
-      }}>
-        From Players You Follow
-      </Text>
+    <View style={{ marginBottom: 28 }}>
+      {/* Section header */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Your Players</Text>
+        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
+          Episodes that mention them
+        </Text>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -64,56 +58,58 @@ export function FromPlayersYouFollowShelf({ onNavigate }: Props) {
               key={`${row.player.id}-${row.episode_id}`}
               onPress={handlePlay}
               style={{
-                width: 200,
-                backgroundColor: '#1E1E1E',
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-                borderWidth: 1,
-                borderColor: '#2A2A2A',
+                width: 220, backgroundColor: '#1E1E1E',
+                borderRadius: 14, overflow: 'hidden',
               }}
             >
-              {/* Player headshot + name */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {/* Show artwork */}
+              <View style={{ width: 220, height: 130, backgroundColor: '#2A2A2A' }}>
+                {row.artwork_url ? (
+                  <Image source={{ uri: row.artwork_url }}
+                    style={{ width: 220, height: 130 }} contentFit="cover" />
+                ) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 32 }}>🎙</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Episode title + player info */}
+              <View style={{ padding: 12, gap: 8 }}>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600',
+                  lineHeight: 18 }} numberOfLines={2}>
+                  {row.episode_title}
+                </Text>
+
+                {/* Player avatar + name */}
                 <TouchableOpacity
                   onPress={() => onNavigate?.('PlayerDetail', { playerSlug: row.player.slug })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
                 >
                   {row.headshot_url ? (
-                    <Image
-                      source={{ uri: row.headshot_url }}
+                    <Image source={{ uri: row.headshot_url }}
                       style={{
-                        width: 40, height: 40, borderRadius: 20,
+                        width: 28, height: 28, borderRadius: 14,
                         borderWidth: 2, borderColor: borderColor,
                       }}
                       contentFit="cover"
                     />
                   ) : (
                     <View style={{
-                      width: 40, height: 40, borderRadius: 20,
+                      width: 28, height: 28, borderRadius: 14,
                       backgroundColor: borderColor,
                       alignItems: 'center', justifyContent: 'center',
-                      borderWidth: 2, borderColor: borderColor,
                     }}>
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>
+                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
                         {row.player.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                       </Text>
                     </View>
                   )}
+                  <Text style={{ color: '#ccc', fontSize: 12, fontWeight: '500' }}>
+                    {row.player.name}
+                  </Text>
                 </TouchableOpacity>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold', flex: 1 }} numberOfLines={1}>
-                  {row.player.name}
-                </Text>
               </View>
-
-              {/* Episode title */}
-              <Text style={{ color: '#fff', fontSize: 13, lineHeight: 18, flex: 1 }} numberOfLines={3}>
-                {row.episode_title}
-              </Text>
-
-              {/* Show name + duration */}
-              <Text style={{ color: '#888', fontSize: 11 }} numberOfLines={1}>
-                {row.show_name}{row.duration_seconds ? ` · ${formatDuration(row.duration_seconds)}` : ''}
-              </Text>
             </TouchableOpacity>
           );
         })}

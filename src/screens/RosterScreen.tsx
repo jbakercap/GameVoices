@@ -4,6 +4,7 @@ import {
   ActivityIndicator, FlatList
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../hooks/useProfile';
 import { useAllTeams } from '../hooks/useLeagues';
 import { useQuery } from '@tanstack/react-query';
@@ -192,8 +193,12 @@ export default function RosterScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
-      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>My Roster</Text>
+      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12,
+        flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, padding: 4 }}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Followed Players</Text>
         <Text style={{ color: '#888', fontSize: 14, marginTop: 2 }}>
           What's trending for your teams
         </Text>

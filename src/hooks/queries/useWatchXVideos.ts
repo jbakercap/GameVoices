@@ -21,7 +21,7 @@ export interface WatchVideoPost {
   };
 }
 
-const CUTOFF_HOURS = 72;
+const CUTOFF_HOURS = 24;
 const MAX_POSTS = 100;
 
 function getCutoffISO() {

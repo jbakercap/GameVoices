@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 
 interface DiscoveryShow {
   id: string;
@@ -21,44 +22,56 @@ export function ShowDiscoveryShelf({ title, shows, accentColor, onNavigate, maxI
   if (displayShows.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{
-        color: accentColor || '#fff',
-        fontSize: 20, fontWeight: 'bold',
-        paddingHorizontal: 16, marginBottom: 12,
-      }}>
-        {title}
-      </Text>
+    <View style={{ marginBottom: 28 }}>
+      {/* Section header with › arrow */}
+      <TouchableOpacity
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 4,
+          paddingHorizontal: 16, marginBottom: 14 }}
+      >
+        <Text style={{
+          color: accentColor || '#fff',
+          fontSize: 22, fontWeight: 'bold',
+        }}>
+          {title}
+        </Text>
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={accentColor || '#fff'}
+          style={{ marginTop: 2 }}
+        />
+      </TouchableOpacity>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
       >
         {displayShows.map((show) => (
           <TouchableOpacity
             key={show.id}
             onPress={() => onNavigate?.('ShowDetail', { showId: show.id })}
-            style={{ width: 96 }}
+            style={{ width: 110 }}
           >
             <View style={{
-              width: 96, height: 96, borderRadius: 10,
-              backgroundColor: '#2A2A2A', overflow: 'hidden', marginBottom: 6,
+              width: 110, height: 110, borderRadius: 12,
+              backgroundColor: '#2A2A2A', overflow: 'hidden', marginBottom: 7,
             }}>
               {show.artwork_url ? (
                 <Image
                   source={{ uri: show.artwork_url }}
-                  style={{ width: 96, height: 96 }}
+                  style={{ width: 110, height: 110 }}
                   contentFit="cover"
                 />
               ) : (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: '#888', fontSize: 14, fontWeight: 'bold' }}>
+                  <Text style={{ color: '#888', fontSize: 16, fontWeight: 'bold' }}>
                     {show.title.slice(0, 2).toUpperCase()}
                   </Text>
                 </View>
               )}
             </View>
-            <Text style={{ color: '#888', fontSize: 11, lineHeight: 15 }} numberOfLines={2}>
+            <Text style={{ color: '#aaa', fontSize: 11, lineHeight: 15 }} numberOfLines={2}>
               {show.title}
             </Text>
           </TouchableOpacity>

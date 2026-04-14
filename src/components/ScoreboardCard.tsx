@@ -1,187 +1,196 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { usePlayer } from '../contexts/PlayerContext';
 
-interface Episode {
-  id: string;
-  title: string;
-  duration_seconds: number | null;
-  audio_url: string;
-  artwork_url: string | null;
-  show: { id: string; title: string; artwork_url: string | null } | null;
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH * 0.72;
 
-interface ScoreboardStory {
+interface RecapStory {
   id: string;
   headline: string;
-  episode_count: number;
-  show_count: number;
-  showArtworks: string[];
-  showCountActual: number;
-  totalDuration: number;
+  story_type: string;
   team_slugs: string[];
-  episodes: Episode[];
+  event_date: string | null;
+  episode_count: number;
+  showArtworks?: string[];
+  episodes?: any[];
 }
 
 interface Props {
-  story: ScoreboardStory;
+  story: RecapStory;
   teamColor: string;
+  matchedTeam?: any;
   onNavigate?: (screen: string, params: any) => void;
+  compact?: boolean;
 }
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+function parseHeadline(headline: string) {
+  const wonPattern = /^(.+?)\s+(beat|defeat|edge|top|down|outlast|outscor|nip|blank|rout|crush|stun|overcome|hold off|hold on)\s+(.+?)\s+(\d+-\d+)/i;
+  const lostPattern = /^(.+?)\s+(lost? to|fell? to|drop|edged by|fall to|drops? to|beaten by|defeated by)\s+(.+?)\s+(\d+-\d+)/i;
+  const wonMatch = headline.match(wonPattern);
+  const lostMatch = headline.match(lostPattern);
+  if (wonMatch) return { team1: wonMatch[1].trim(), team2: wonMatch[3].trim(), score: wonMatch[4], won: true };
+  if (lostMatch) return { team1: lostMatch[1].trim(), team2: lostMatch[3].trim(), score: lostMatch[4], won: false };
+  return null;
 }
 
-export function ScoreboardCard({ story, teamColor, onNavigate }: Props) {
-  const [expanded, setExpanded] = useState(false);
-  const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
+function formatEventDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  } catch {
+    return '';
+  }
+}
+
+export function ScoreboardCard({ story, teamColor, matchedTeam, onNavigate, compact }: Props) {
   const color = teamColor || '#E53935';
-  const duration = story.totalDuration ? formatDuration(story.totalDuration) : null;
+  const parsed = parseHeadline(story.headline);
+  const dateStr = formatEventDate(story.event_date);
   const artworks = story.showArtworks || [];
-  const showCount = story.showCountActual || story.show_count || 0;
 
-  const handlePlayAll = () => {
-    onNavigate?.('StoryDetail', { storyId: story.id });
-  };
+  if (compact) {
+    // Lovable-style compact horizontal card
+    const scores = parsed?.score?.split('-') || [];
+    const score1 = scores[0] || '';
+    const score2 = scores[1] || '';
 
-  const handlePlayEpisode = (ep: Episode) => {
-    if (currentEpisode?.id === ep.id) {
-      togglePlayPause();
-    } else {
-      playEpisode({
-        id: ep.id,
-        title: ep.title,
-        showTitle: ep.show?.title || '',
-        showId: ep.show?.id,
-        artworkUrl: ep.artwork_url || ep.show?.artwork_url || undefined,
-        audioUrl: ep.audio_url,
-        durationSeconds: ep.duration_seconds || undefined,
-      });
-    }
-  };
+    return (
+      <TouchableOpacity
+        onPress={() => onNavigate?.('StoryDetail', { storyId: story.id })}
+        style={{
+          width: CARD_WIDTH, backgroundColor: '#1E1E1E',
+          borderRadius: 14, overflow: 'hidden',
+        }}
+      >
+        {/* Red top border */}
+        <View style={{ height: 3, backgroundColor: color }} />
 
-  return (
-    <View style={{
-      marginHorizontal: 16, marginBottom: 16, borderRadius: 16, overflow: 'hidden',
-      backgroundColor: '#1A1A1A',
-    }}>
-      {/* Team color tint overlay */}
-      <View style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: color + '33',
-      }} />
-
-      {/* Background artwork */}
-      {artworks.length > 0 && (
-        <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '55%', opacity: 0.15 }}>
-          <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
-            {artworks.slice(0, 4).map((url, i) => (
-              <Image key={i} source={{ uri: url }} style={{ width: '50%', height: '50%' }} contentFit="cover" />
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Content */}
-      <View style={{ padding: 16 }}>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', lineHeight: 24, marginBottom: 10 }}>
-          {story.headline}
-        </Text>
-
-        {/* Artwork stack + stats */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          {artworks.length > 0 && (
-            <View style={{ flexDirection: 'row' }}>
-              {artworks.slice(0, 4).map((url, i) => (
-                <Image key={i} source={{ uri: url }}
-                  style={{ width: 28, height: 28, borderRadius: 6, marginLeft: i > 0 ? -6 : 0, borderWidth: 1.5, borderColor: '#000' }}
-                  contentFit="cover"
-                />
-              ))}
-              {showCount > 4 && (
-                <View style={{
-                  width: 28, height: 28, borderRadius: 6, marginLeft: -6,
-                  backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Text style={{ color: '#888', fontSize: 10 }}>+{showCount - 4}</Text>
-                </View>
-              )}
-            </View>
-          )}
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
-            {story.episode_count} takes · {showCount} shows{duration ? ` · ${duration}` : ''}
+        <View style={{ padding: 14 }}>
+          {/* FINAL + date */}
+          <Text style={{ color: '#888', fontSize: 11, fontWeight: '600',
+            textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>
+            FINAL{dateStr ? ` · ${dateStr}` : ''}
           </Text>
-        </View>
 
-        {/* Play All button */}
-        <TouchableOpacity
-          onPress={handlePlayAll}
-          style={{
-            backgroundColor: color, borderRadius: 24, paddingVertical: 12,
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>▶  Play All Takes</Text>
-        </TouchableOpacity>
-
-        {/* Expand toggle */}
-        {story.episodes && story.episodes.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setExpanded(!expanded)}
-            style={{ alignItems: 'center', paddingVertical: 10 }}
-          >
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '500' }}>
-              {expanded ? 'Hide Episodes ↑' : `See ${story.episodes.length} Related Episodes ↓`}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Expanded episodes */}
-        {expanded && story.episodes.map((ep) => {
-          const isCurrent = currentEpisode?.id === ep.id;
-          const epArtwork = ep.artwork_url || ep.show?.artwork_url;
-          return (
-            <View key={ep.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', backgroundColor: '#333' }}>
-                {epArtwork ? (
-                  <Image source={{ uri: epArtwork }} style={{ width: 40, height: 40 }} contentFit="cover" />
+          {/* Score display */}
+          {parsed ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center',
+              justifyContent: 'space-between', marginBottom: 14 }}>
+              {/* Team 1 */}
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                {matchedTeam?.logo_url ? (
+                  <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#fff',
+                    alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                    <Image source={{ uri: matchedTeam.logo_url }}
+                      style={{ width: 36, height: 36 }} contentFit="contain" />
+                  </View>
                 ) : (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: '#888', fontSize: 11, fontWeight: 'bold' }}>
-                      {(ep.show?.title || 'P').slice(0, 2).toUpperCase()}
+                  <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#2A2A2A',
+                    alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                      {parsed.team1.split(' ').pop()?.slice(0, 3).toUpperCase()}
                     </Text>
                   </View>
                 )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: isCurrent ? color : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
-                  {ep.title}
-                </Text>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }} numberOfLines={1}>
-                  {ep.show?.title}{ep.duration_seconds ? ` · ${formatDuration(ep.duration_seconds)}` : ''}
+                <Text style={{ color: '#888', fontSize: 10 }} numberOfLines={1}>
+                  {parsed.team1.split(' ').pop()?.slice(0, 3).toUpperCase()}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => handlePlayEpisode(ep)}
-                style={{
-                  width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: isCurrent ? color : 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 12 }}>
-                  {isCurrent && isPlaying ? '⏸' : '▶'}
+
+              {/* Score */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1.5, justifyContent: 'center' }}>
+                <Text style={{ color: parsed.won ? '#fff' : '#888', fontSize: 28, fontWeight: '800' }}>
+                  {parsed.won ? score1 : score2}
                 </Text>
-              </TouchableOpacity>
+                <Text style={{ color: '#555', fontSize: 14 }}>▶</Text>
+                <Text style={{ color: parsed.won ? '#888' : '#fff', fontSize: 28, fontWeight: '800' }}>
+                  {parsed.won ? score2 : score1}
+                </Text>
+              </View>
+
+              {/* Team 2 */}
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#2A2A2A',
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                    {parsed.team2.split(' ').pop()?.slice(0, 3).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={{ color: '#888', fontSize: 10 }} numberOfLines={1}>
+                  {parsed.team2.split(' ').pop()?.slice(0, 3).toUpperCase()}
+                </Text>
+              </View>
             </View>
-          );
-        })}
+          ) : (
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600',
+              marginBottom: 14, lineHeight: 18 }} numberOfLines={2}>
+              {story.headline}
+            </Text>
+          )}
+
+          {/* Show artwork thumbnails */}
+          {artworks.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+              {artworks.slice(0, 3).map((url, i) => (
+                <View key={i} style={{ width: 38, height: 38, borderRadius: 6, overflow: 'hidden',
+                  backgroundColor: '#2A2A2A' }}>
+                  <Image source={{ uri: url }} style={{ width: 38, height: 38 }} contentFit="cover" />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Play All Takes button */}
+          <TouchableOpacity
+            onPress={() => onNavigate?.('StoryDetail', { storyId: story.id })}
+            style={{
+              borderWidth: 1.5, borderColor: '#444', borderRadius: 10,
+              paddingVertical: 10, alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
+              ▶  Play All Takes
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // Legacy full-width card (kept for any other usages)
+  return (
+    <TouchableOpacity
+      onPress={() => onNavigate?.('StoryDetail', { storyId: story.id })}
+      style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 16,
+        overflow: 'hidden', backgroundColor: '#1A1A1A' }}
+    >
+      <View style={{ height: 3, backgroundColor: color }} />
+      <View style={{ padding: 16 }}>
+        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700',
+          lineHeight: 22, marginBottom: 12 }}>
+          {story.headline}
+        </Text>
+        {artworks.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+            {artworks.slice(0, 4).map((url, i) => (
+              <View key={i} style={{ width: 36, height: 36, borderRadius: 6,
+                overflow: 'hidden', backgroundColor: '#2A2A2A' }}>
+                <Image source={{ uri: url }} style={{ width: 36, height: 36 }} contentFit="cover" />
+              </View>
+            ))}
+          </View>
+        )}
+        <TouchableOpacity
+          onPress={() => onNavigate?.('StoryDetail', { storyId: story.id })}
+          style={{ backgroundColor: color, borderRadius: 24, paddingVertical: 12,
+            alignItems: 'center' }}
+        >
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>▶  Play All Takes</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }

@@ -4,7 +4,8 @@ import {
   ActivityIndicator, Alert, Modal, TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useFollowedShows, useSavedEpisodes } from '../hooks/queries/useUserLibrary';
 import { useQueue } from '../hooks/queries/useQueue';
 import { useGroupedListenHistory } from '../hooks/queries/useListenHistory';
@@ -61,8 +62,9 @@ function EpisodeItem({ episode, showTitle, artwork, onPress, onNavigateShow }: {
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<LibraryTab>('saved');
+  const [activeTab, setActiveTab] = useState<LibraryTab>(route.params?.initialTab || 'saved');
   const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [editMomentModal, setEditMomentModal] = useState<{ pearl: Bookmark; note: string } | null>(null);
@@ -116,8 +118,12 @@ export default function LibraryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
-      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 8 }}>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Library</Text>
+      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 8,
+        flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, padding: 4 }}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>My Locker</Text>
       </View>
 
       {/* Tab bar */}

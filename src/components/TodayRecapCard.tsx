@@ -16,7 +16,7 @@ interface RecapStory {
   episode_count: number;
 }
 
-function useTodayRecap(teamSlugs: string[]) {
+export function useTodayRecap(teamSlugs: string[]) {
   return useQuery({
     queryKey: ['today-recap', teamSlugs],
     queryFn: async (): Promise<RecapStory[]> => {
