@@ -41,7 +41,7 @@ function TabNavigator({ navigation }: any) {
     <Tab.Navigator screenOptions={({ route }) => ({
       headerShown: false,
       tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#222', paddingBottom: 4 },
-      tabBarActiveTintColor: '#E53935',
+      tabBarActiveTintColor: '#F0B429',
       tabBarInactiveTintColor: '#555',
       tabBarIcon: ({ color, size }) => {
         const icons: Record<string, string> = {
@@ -107,7 +107,7 @@ function AppContent() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#E53935', fontSize: 28, fontWeight: 'bold' }}>GameVoices</Text>
+        <Text style={{ color: '#F0B429', fontSize: 28, fontWeight: 'bold' }}>GameVoices</Text>
       </View>
     );
   }

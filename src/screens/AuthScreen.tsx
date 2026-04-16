@@ -40,7 +40,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <Text style={{ color: '#E53935', fontSize: 36, fontWeight: 'bold', letterSpacing: -1 }}>
+          <Text style={{ color: '#F0B429', fontSize: 36, fontWeight: 'bold', letterSpacing: -1 }}>
             GameVoices
           </Text>
           <Text style={{ color: '#888', fontSize: 15, marginTop: 6 }}>
@@ -59,7 +59,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
               onPress={() => { setMode(m); setError(''); setMessage(''); }}
               style={{
                 flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center',
-                backgroundColor: mode === m ? '#E53935' : 'transparent',
+                backgroundColor: mode === m ? '#F0B429' : 'transparent',
               }}
             >
               <Text style={{ color: mode === m ? '#fff' : '#888', fontWeight: '600', fontSize: 15 }}>
@@ -102,7 +102,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
         {/* Error / Message */}
         {error ? (
-          <Text style={{ color: '#E53935', textAlign: 'center', marginBottom: 16, fontSize: 14 }}>
+          <Text style={{ color: '#F0B429', textAlign: 'center', marginBottom: 16, fontSize: 14 }}>
             {error}
           </Text>
         ) : null}
@@ -117,7 +117,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
           onPress={handleAuth}
           disabled={loading || !email || !password}
           style={{
-            backgroundColor: loading || !email || !password ? '#444' : '#E53935',
+            backgroundColor: loading || !email || !password ? '#444' : '#F0B429',
             borderRadius: 12, padding: 16, alignItems: 'center',
           }}
         >

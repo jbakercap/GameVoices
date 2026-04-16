@@ -375,7 +375,7 @@ export default function TrendingScreen() {
                     value: t.slug,
                     label: t.short_name,
                     logoUrl: t.logo_url,
-                    color: topicsTeam === t.slug ? (t.primary_color || '#E53935') : null,
+                    color: topicsTeam === t.slug ? (t.primary_color || '#F0B429') : null,
                   })),
                 ]}
                 selected={topicsTeam}
@@ -385,7 +385,7 @@ export default function TrendingScreen() {
           </View>
 
           {signalsLoading ? (
-            <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} />
           ) : signals.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="flame-outline" size={48} color="#444" />
@@ -427,7 +427,7 @@ export default function TrendingScreen() {
           </View>
 
           {playersLoading ? (
-            <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} />
           ) : players.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="people-outline" size={48} color="#444" />
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabItemActive: {
-    borderBottomColor: '#E53935',
+    borderBottomColor: '#F0B429',
   },
   tabLabel: {
     color: '#666',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pillActive: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     borderColor: 'transparent',
   },
   pillText: {
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   followHeartActive: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     borderColor: 'transparent',
   },
   playerFirst: {
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   playerEps: {
-    color: '#E53935',
+    color: '#F0B429',
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',

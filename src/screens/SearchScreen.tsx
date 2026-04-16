@@ -332,7 +332,7 @@ function EpisodeRow({
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <Text style={{ color: isCurrent ? '#E53935' : '#fff', fontSize: 13, fontWeight: '600', flexShrink: 1 }}
+          <Text style={{ color: isCurrent ? '#F0B429' : '#fff', fontSize: 13, fontWeight: '600', flexShrink: 1 }}
             numberOfLines={2}>{episode.title}</Text>
           {episode.matchSource === 'fuzzy' && (
             <View style={{ backgroundColor: '#333', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}>
@@ -343,7 +343,7 @@ function EpisodeRow({
         <Text style={{ color: '#888', fontSize: 11, marginTop: 2 }} numberOfLines={1}>{episode.show_title}</Text>
       </View>
       <TouchableOpacity onPress={handlePlay} style={{
-        width: 36, height: 36, borderRadius: 18, backgroundColor: isCurrent ? '#E53935' : '#2A2A2A',
+        width: 36, height: 36, borderRadius: 18, backgroundColor: isCurrent ? '#F0B429' : '#2A2A2A',
         alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 12 }}>{isCurrent && isPlaying ? '⏸' : '▶'}</Text>
       </TouchableOpacity>
@@ -456,7 +456,7 @@ function TabBar({ activeTab, onSelect, counts }: {
           onPress={() => onSelect(tab.key)}
           style={{
             paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-            backgroundColor: activeTab === tab.key ? '#E53935' : '#2A2A2A',
+            backgroundColor: activeTab === tab.key ? '#F0B429' : '#2A2A2A',
           }}>
           <Text style={{
             color: activeTab === tab.key ? '#fff' : '#aaa',
@@ -573,7 +573,7 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
         </View>
       ) : isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#E53935" size="large" />
+          <ActivityIndicator color="#F0B429" size="large" />
         </View>
       ) : !hasResults ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 }}>
@@ -598,7 +598,7 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
                 borderRadius: 10, padding: 12 }}>
                 <Text style={{ color: '#888', fontSize: 13 }}>✨ Did you mean:</Text>
                 <TouchableOpacity onPress={() => handleTagPress(didYouMeanSuggestion)}>
-                  <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600' }}>
+                  <Text style={{ color: '#F0B429', fontSize: 13, fontWeight: '600' }}>
                     {didYouMeanSuggestion}
                   </Text>
                 </TouchableOpacity>

@@ -50,12 +50,12 @@ function EpisodeItem({ episode, showTitle, artwork, onPress, onNavigateShow }: {
         {artwork ? <Image source={{ uri: artwork }} style={{ width: 52, height: 52 }} contentFit="cover" /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 18 }}>🎙</Text></View>}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: isCurrent ? '#E53935' : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{episode.title}</Text>
+        <Text style={{ color: isCurrent ? '#F0B429' : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{episode.title}</Text>
         <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
           {[showTitle, episode.duration_seconds ? formatDurationHuman(episode.duration_seconds) : null].filter(Boolean).join(' · ')}
         </Text>
       </View>
-      {isCurrent && isPlaying && <Text style={{ color: '#E53935', fontSize: 10 }}>▶</Text>}
+      {isCurrent && isPlaying && <Text style={{ color: '#F0B429', fontSize: 10 }}>▶</Text>}
     </TouchableOpacity>
   );
 }
@@ -132,7 +132,7 @@ export default function LibraryScreen() {
           <TouchableOpacity
             key={tab.key}
             onPress={() => setActiveTab(tab.key)}
-            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: activeTab === tab.key ? '#E53935' : '#2A2A2A' }}>
+            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: activeTab === tab.key ? '#F0B429' : '#2A2A2A' }}>
             <Text style={{ color: activeTab === tab.key ? '#fff' : '#aaa', fontSize: 13, fontWeight: '600' }}>
               {tab.label}{tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ''}
             </Text>
@@ -142,7 +142,7 @@ export default function LibraryScreen() {
 
       {/* Saved Episodes */}
       {activeTab === 'saved' && (
-        savedLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+        savedLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
         savedEpisodes.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>★</Text>
@@ -179,7 +179,7 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             </View>
           )}
-          {queueLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+          {queueLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
           queue.length === 0 ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
@@ -218,7 +218,7 @@ export default function LibraryScreen() {
       {/* History */}
       {activeTab === 'history' && (
         <View style={{ flex: 1 }}>
-          {historyLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+          {historyLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
           !historyGroups || Object.keys(historyGroups).length === 0 ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🕐</Text>
@@ -266,10 +266,10 @@ export default function LibraryScreen() {
               onPress={() => Alert.prompt('New Playlist', 'Enter playlist name', (name) => {
                 if (name?.trim()) createPlaylist.mutate({ name: name.trim() });
               })}>
-              <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '600' }}>+ New Playlist</Text>
+              <Text style={{ color: '#F0B429', fontSize: 14, fontWeight: '600' }}>+ New Playlist</Text>
             </TouchableOpacity>
           </View>
-          {playlistsLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+          {playlistsLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
           playlists.length === 0 ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🎵</Text>
@@ -313,7 +313,7 @@ export default function LibraryScreen() {
 
       {/* Followed Shows */}
       {activeTab === 'shows' && (
-        showsLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+        showsLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
         followedShows.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>🎙</Text>
@@ -344,7 +344,7 @@ export default function LibraryScreen() {
 
       {/* Saved Stories */}
       {activeTab === 'stories' && (
-        storiesLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+        storiesLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
         savedStories.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>📈</Text>
@@ -371,7 +371,7 @@ export default function LibraryScreen() {
 
       {/* Saved Moments (Pearls) */}
       {activeTab === 'moments' && (
-        bookmarksLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> :
+        bookmarksLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> :
         bookmarks.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>✨</Text>
@@ -477,7 +477,7 @@ export default function LibraryScreen() {
                   updatePearl.mutate({ pearlId: editMomentModal.pearl.id, note: editMomentModal.note.trim() || null });
                   setEditMomentModal(null);
                 }}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E53935', alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F0B429', alignItems: 'center' }}
               >
                 <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Save</Text>
               </TouchableOpacity>

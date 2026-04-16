@@ -17,7 +17,7 @@ function ProgressBar({ position, duration }: { position: number; duration: numbe
   const pct = Math.min(1, position / duration);
   return (
     <View style={{ height: 4, backgroundColor: '#333', borderRadius: 2, marginVertical: 8 }}>
-      <View style={{ height: 4, backgroundColor: '#E53935', borderRadius: 2, width: `${pct * 100}%` as any }} />
+      <View style={{ height: 4, backgroundColor: '#F0B429', borderRadius: 2, width: `${pct * 100}%` as any }} />
     </View>
   );
 }
@@ -56,7 +56,7 @@ export default function EpisodeScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -141,7 +141,7 @@ export default function EpisodeScreen() {
         <TouchableOpacity
           onPress={handlePlay}
           style={{
-            backgroundColor: '#E53935', borderRadius: 14, paddingVertical: 14,
+            backgroundColor: '#F0B429', borderRadius: 14, paddingVertical: 14,
             alignItems: 'center', marginVertical: 16,
           }}>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
@@ -154,8 +154,8 @@ export default function EpisodeScreen() {
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
             <TouchableOpacity
               onPress={() => saveEpisode.mutate({ episodeId: episode.id, isSaved: episode.isSaved || false })}
-              style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: episode.isSaved ? '#E53935' : '#333' }}>
-              <Text style={{ color: episode.isSaved ? '#E53935' : '#aaa', fontSize: 14, fontWeight: '600' }}>
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: episode.isSaved ? '#F0B429' : '#333' }}>
+              <Text style={{ color: episode.isSaved ? '#F0B429' : '#aaa', fontSize: 14, fontWeight: '600' }}>
                 {episode.isSaved ? '★ Saved' : '☆ Save'}
               </Text>
             </TouchableOpacity>

@@ -16,29 +16,58 @@ interface RecapStory {
   episode_count: number;
 }
 
+const LEAGUE_HOURS: Record<string, number> = {
+  mlb: 36,
+  nba: 48,
+  nfl: 144, // 6 days
+  nhl: 48,
+  wnba: 48,
+};
+const DEFAULT_HOURS = 48;
+const MAX_HOURS = 144;
+
 export function useTodayRecap(teamSlugs: string[]) {
   return useQuery({
     queryKey: ['today-recap', teamSlugs],
     queryFn: async (): Promise<RecapStory[]> => {
       if (teamSlugs.length === 0) return [];
 
-      const twentyFourHoursAgo = new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ).toISOString();
+      // Fetch league slugs for followed teams
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('slug, leagues!inner(slug)')
+        .in('slug', teamSlugs);
+
+      const teamLeagueMap: Record<string, string> = {};
+      for (const t of teamsData || []) {
+        teamLeagueMap[t.slug] = (t.leagues as any)?.slug || '';
+      }
+
+      // Fetch with the maximum window, filter per-league client-side
+      const maxCutoff = new Date(Date.now() - MAX_HOURS * 60 * 60 * 1000).toISOString();
 
       const { data, error } = await supabase
         .from('stories')
-        .select('id, headline, story_type, team_slugs, event_date, episode_count')
+        .select('id, headline, story_type, team_slugs, event_date, episode_count, created_at')
         .eq('status', 'active')
         .eq('story_type', 'game_result')
         .overlaps('team_slugs', teamSlugs)
         .gt('expires_at', new Date().toISOString())
-        .gte('created_at', twentyFourHoursAgo)
+        .gte('created_at', maxCutoff)
         .order('event_date', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
-      return data || [];
+
+      const now = Date.now();
+      return (data || []).filter(story => {
+        // Find the league for this story via the first matching followed team
+        const matchedSlug = (story.team_slugs || []).find((s: string) => teamLeagueMap[s]);
+        const leagueSlug = matchedSlug ? teamLeagueMap[matchedSlug] : '';
+        const hours = LEAGUE_HOURS[leagueSlug] ?? DEFAULT_HOURS;
+        const cutoff = now - hours * 60 * 60 * 1000;
+        return new Date(story.created_at).getTime() >= cutoff;
+      });
     },
     enabled: teamSlugs.length > 0,
     staleTime: 5 * 60 * 1000,

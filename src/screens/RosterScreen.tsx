@@ -61,7 +61,7 @@ function EpisodeCard({ episode }: { episode: any }) {
         <View style={{
           position: 'absolute', bottom: 6, right: 6,
           width: 30, height: 30, borderRadius: 15,
-          backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
         }}>
           <Text style={{ color: '#fff', fontSize: 11, marginLeft: 2 }}>▶</Text>
         </View>
@@ -150,7 +150,7 @@ function TeamPill({ team, selected, onPress }: {
         borderRadius: 20,
         marginRight: 8,
         height: 36,
-        backgroundColor: selected ? '#E53935' : '#2A2A2A',
+        backgroundColor: selected ? '#F0B429' : '#2A2A2A',
       }}>
       {team.logo_url && (
         <View style={{
@@ -185,7 +185,7 @@ export default function RosterScreen() {
   if (profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -234,7 +234,7 @@ export default function RosterScreen() {
                 marginRight: 8,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: selectedTeam === null ? '#E53935' : '#2A2A2A',
+                backgroundColor: selectedTeam === null ? '#F0B429' : '#2A2A2A',
               }}>
               <Text style={{
                 color: selectedTeam === null ? '#fff' : '#aaa',
@@ -259,7 +259,7 @@ export default function RosterScreen() {
           {/* Stories */}
           {storiesLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color="#E53935" />
+              <ActivityIndicator color="#F0B429" />
             </View>
           ) : (
             <FlatList

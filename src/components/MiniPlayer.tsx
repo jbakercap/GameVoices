@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
 
 export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
-  const { currentEpisode, isPlaying, isLoading, togglePlayPause, progress } = usePlayer();
+  const { currentEpisode, isPlaying, isLoading, togglePlayPause, progress, dismissPlayer } = usePlayer();
 
   if (!currentEpisode) return null;
 
@@ -61,6 +61,12 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
               />
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); dismissPlayer(); }}
+            style={styles.dismissButton}
+          >
+            <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
@@ -89,7 +95,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 2,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
   },
   content: {
     flexDirection: 'row',
@@ -130,7 +136,15 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dismissButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },

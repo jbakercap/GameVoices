@@ -38,7 +38,7 @@ export default function PersonScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -80,7 +80,7 @@ export default function PersonScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold' }}>{decodedName}</Text>
-                {credentials && <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600', marginTop: 2 }}>{credentials}</Text>}
+                {credentials && <Text style={{ color: '#F0B429', fontSize: 13, fontWeight: '600', marginTop: 2 }}>{credentials}</Text>}
                 {affiliation && <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>{affiliation}</Text>}
               </View>
               {user && speakerId && (
@@ -89,7 +89,7 @@ export default function PersonScreen() {
                   disabled={followSpeaker.isPending}
                   style={{
                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                    backgroundColor: isFollowing ? '#2A2A2A' : '#E53935',
+                    backgroundColor: isFollowing ? '#2A2A2A' : '#F0B429',
                     borderWidth: isFollowing ? 1 : 0, borderColor: '#444',
                     marginLeft: 12,
                   }}>

@@ -5,6 +5,7 @@ export interface WatchVideoPost {
   id: string;
   postId: string;
   handle: string;
+  teamId?: string;
   text: string;
   postedAt: string;
   videoUrl: string;
@@ -57,10 +58,14 @@ function mapRows(rows: any[]): WatchVideoPost[] {
     if (!videoUrl) continue;
 
     seen.add(row.post_id);
+    const teamId = typeof row.cache_key === 'string' && row.cache_key.startsWith('team:')
+      ? row.cache_key.slice(5)
+      : undefined;
     posts.push({
       id: row.id,
       postId: row.post_id,
       handle: row.handle,
+      teamId,
       text: (pd.text || '').slice(0, 280),
       postedAt: row.posted_at || pd.created_at,
       videoUrl,

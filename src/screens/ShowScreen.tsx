@@ -61,7 +61,7 @@ function EpisodeRow({ episode, showArtwork, onNavigate }: {
         {/* Info */}
         <View style={{ flex: 1 }}>
           <TouchableOpacity onPress={() => onNavigate?.('EpisodeDetail', { episodeId: episode.id })}>
-            <Text style={{ color: isCurrent ? '#E53935' : '#fff', fontSize: 14, fontWeight: '600', lineHeight: 20 }}
+            <Text style={{ color: isCurrent ? '#F0B429' : '#fff', fontSize: 14, fontWeight: '600', lineHeight: 20 }}
               numberOfLines={2}>{episode.title}</Text>
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -77,7 +77,7 @@ function EpisodeRow({ episode, showArtwork, onNavigate }: {
         {/* Play button */}
         <TouchableOpacity onPress={handlePlay} style={{
           width: 36, height: 36, borderRadius: 18,
-          backgroundColor: isCurrent ? '#E53935' : '#2A2A2A',
+          backgroundColor: isCurrent ? '#F0B429' : '#2A2A2A',
           alignItems: 'center', justifyContent: 'center',
         }}>
           <Text style={{ color: '#fff', fontSize: 12 }}>{isCurrent && isPlaying ? '⏸' : '▶'}</Text>
@@ -88,7 +88,7 @@ function EpisodeRow({ episode, showArtwork, onNavigate }: {
       {user && (
         <View style={{ flexDirection: 'row', gap: 16, marginTop: 8, paddingLeft: 68 }}>
           <TouchableOpacity onPress={() => saveEpisode.mutate({ episodeId: episode.id, isSaved })}>
-            <Text style={{ color: isSaved ? '#E53935' : '#555', fontSize: 12 }}>
+            <Text style={{ color: isSaved ? '#F0B429' : '#555', fontSize: 12 }}>
               {isSaved ? '★ Saved' : '☆ Save'}
             </Text>
           </TouchableOpacity>
@@ -121,7 +121,7 @@ export default function ShowScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -186,7 +186,7 @@ export default function ShowScreen() {
               disabled={followShow.isPending}
               style={{
                 flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                backgroundColor: isFollowed ? '#2A2A2A' : '#E53935',
+                backgroundColor: isFollowed ? '#2A2A2A' : '#F0B429',
                 borderWidth: isFollowed ? 1 : 0, borderColor: '#444',
               }}>
               <Text style={{ color: isFollowed ? '#aaa' : '#fff', fontWeight: '600', fontSize: 15 }}>

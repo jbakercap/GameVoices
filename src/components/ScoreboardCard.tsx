@@ -46,7 +46,7 @@ function formatEventDate(dateStr: string | null): string {
 }
 
 export function ScoreboardCard({ story, teamColor, matchedTeam, onNavigate, compact }: Props) {
-  const color = teamColor || '#E53935';
+  const color = teamColor || '#F0B429';
   const parsed = parseHeadline(story.headline);
   const dateStr = formatEventDate(story.event_date);
   const artworks = story.showArtworks || [];

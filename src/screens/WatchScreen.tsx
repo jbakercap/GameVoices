@@ -445,6 +445,7 @@ export default function WatchScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [cooldownActive, setCooldownActive] = useState(false);
+  const [buzzTeamFilter, setBuzzTeamFilter] = useState<string | null>(null);
   const lastRefreshAt = useRef(0);
 
   // useTeamsWithFollowedShows for buzz (has fallback logic)
@@ -478,10 +479,15 @@ export default function WatchScreen() {
     }
   };
 
-  // Reset active index when switching tabs
+  // Reset active index and filter when switching tabs
   useEffect(() => {
     setActiveIndex(0);
+    setBuzzTeamFilter(null);
   }, [activeTab]);
+
+  const filteredPosts = buzzTeamFilter
+    ? posts.filter(p => p.teamId === buzzTeamFilter)
+    : posts;
 
   const viewabilityConfig = useRef({
     waitForInteraction: false,
@@ -503,9 +509,9 @@ export default function WatchScreen() {
       isActive={index === activeIndex}
       isMuted={isMuted}
       onMuteToggle={() => setIsMuted(m => !m)}
-      onLoadError={() => setActiveIndex(i => Math.min(i + 1, posts.length - 1))}
+      onLoadError={() => setActiveIndex(i => Math.min(i + 1, filteredPosts.length - 1))}
     />
-  ), [activeIndex, isMuted, posts.length]);
+  ), [activeIndex, isMuted, filteredPosts.length]);
 
   const renderClipItem = useCallback(({ item, index }: { item: VideoClip; index: number }) => (
     <ClipCard
@@ -564,34 +570,15 @@ export default function WatchScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#E53935" size="large" />
+          <ActivityIndicator color="#F0B429" size="large" />
         </View>
       ) : activeTab === 'buzz' ? (
         buzzEmpty ? (
           <EmptyBuzz hasTeams={buzzTeamIds.length > 0} />
         ) : (
           <>
-            {/* Team logo strip */}
-            {userTeams.length > 0 && (
-              <View style={styles.teamStrip}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamStripContent}>
-                  {userTeams.map(t => (
-                    <View key={t.id} style={styles.teamStripItem}>
-                      <View style={[styles.teamStripLogo, { borderColor: t.primary_color || 'rgba(255,255,255,0.3)' }]}>
-                        {t.logo_url ? (
-                          <Image source={{ uri: t.logo_url }} style={styles.teamStripLogoImg} contentFit="contain" />
-                        ) : (
-                          <Text style={styles.teamStripAbbr}>{t.short_name?.slice(0, 3)}</Text>
-                        )}
-                      </View>
-                      <Text style={styles.teamStripName} numberOfLines={1}>{t.short_name}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
             <FlatList
-              data={posts}
+              data={filteredPosts}
               renderItem={renderBuzzItem}
               keyExtractor={buzzKey}
               pagingEnabled
@@ -606,6 +593,49 @@ export default function WatchScreen() {
               initialNumToRender={3}
               maxToRenderPerBatch={2}
             />
+            {/* Team filter strip */}
+            {buzzTeams.length > 0 && (
+              <View style={styles.clipsFilterStrip}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.clipsFilterContent}
+                >
+                  <TouchableOpacity
+                    onPress={() => { setBuzzTeamFilter(null); setActiveIndex(0); }}
+                    style={[styles.allPill, buzzTeamFilter === null && styles.allPillActive]}
+                  >
+                    <Text style={[styles.allPillText, buzzTeamFilter === null && styles.allPillTextActive]}>
+                      All
+                    </Text>
+                  </TouchableOpacity>
+                  {buzzTeams.map(t => {
+                    const isSelected = buzzTeamFilter === t.id;
+                    const isDimmed = buzzTeamFilter !== null && !isSelected;
+                    return (
+                      <TouchableOpacity
+                        key={t.id}
+                        onPress={() => { setBuzzTeamFilter(isSelected ? null : t.id); setActiveIndex(0); }}
+                        style={[styles.filterTeamItem, { opacity: isDimmed ? 0.4 : 1 }]}
+                      >
+                        <View style={[
+                          styles.filterTeamLogo,
+                          { borderColor: isSelected ? '#fff' : (t.primary_color || 'rgba(255,255,255,0.25)') },
+                          isSelected && styles.filterTeamLogoSelected,
+                        ]}>
+                          {t.logo_url ? (
+                            <Image source={{ uri: t.logo_url }} style={styles.filterTeamLogoImg} contentFit="contain" />
+                          ) : (
+                            <Text style={styles.filterTeamAbbr}>{t.short_name?.slice(0, 3)}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.filterTeamName} numberOfLines={1}>{t.short_name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </>
         )
       ) : (
@@ -749,6 +779,75 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     width: 56,
+  },
+  // Clips team filter strip
+  clipsFilterStrip: {
+    position: 'absolute',
+    top: 110,
+    left: 0,
+    right: 0,
+    zIndex: 9,
+  },
+  clipsFilterContent: {
+    paddingHorizontal: 12,
+    gap: 10,
+    alignItems: 'center',
+  },
+  allPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  allPillActive: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+  },
+  allPillText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  allPillTextActive: {
+    color: '#000',
+  },
+  filterTeamItem: {
+    alignItems: 'center',
+    gap: 4,
+    width: 52,
+  },
+  filterTeamLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  filterTeamLogoSelected: {
+    borderWidth: 2.5,
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+  },
+  filterTeamLogoImg: {
+    width: 30,
+    height: 30,
+  },
+  filterTeamAbbr: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#333',
+  },
+  filterTeamName: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   // Creator header on clip cards
   creatorHeader: {
@@ -976,7 +1075,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     borderRadius: 24,
   },
   emptyBtnText: {

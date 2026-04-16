@@ -10,142 +10,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useQueryClient } from '@tanstack/react-query';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface TeamOption {
-  slug: string;
-  short_name: string;
-  logo_url: string | null;
-  league_short_name: string;
-}
-
-interface League {
-  id: string;
-  name: string;
-  short_name: string;
-  slug: string;
-}
-
-// ─── Team Picker Modal ────────────────────────────────────────────────────────
-
-function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
-  visible: boolean;
-  onClose: () => void;
-  selectedTeams: string[];
-  onSave: (teams: string[]) => void;
-}) {
-  const [allTeams, setAllTeams] = useState<TeamOption[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [selected, setSelected] = useState<string[]>(selectedTeams);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!visible) return;
-    setSelected(selectedTeams);
-
-    async function load() {
-      const [teamsRes, leaguesRes] = await Promise.all([
-        supabase.from('teams')
-          .select('slug, short_name, logo_url, leagues!inner(short_name)')
-          .eq('is_active', true)
-          .order('display_order'),
-        supabase.from('leagues')
-          .select('id, name, short_name, slug')
-          .neq('slug', 'general')
-          .order('display_order'),
-      ]);
-      if (teamsRes.data) {
-        setAllTeams(teamsRes.data.map((t: any) => ({
-          slug: t.slug, short_name: t.short_name, logo_url: t.logo_url,
-          league_short_name: t.leagues?.short_name || '',
-        })));
-      }
-      if (leaguesRes.data) setLeagues(leaguesRes.data);
-    }
-    load();
-  }, [visible]);
-
-  const toggle = (slug: string) => {
-    setSelected(prev => prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]);
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave(selected);
-    setSaving(false);
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={{ flex: 1, backgroundColor: '#121212' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          paddingTop: 20, paddingHorizontal: 16, paddingBottom: 12,
-          borderBottomWidth: 1, borderBottomColor: '#222' }}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={{ color: '#888', fontSize: 16 }}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Favorite Teams</Text>
-          <TouchableOpacity onPress={handleSave} disabled={saving}>
-            {saving ? (
-              <ActivityIndicator color="#E53935" size="small" />
-            ) : (
-              <Text style={{ color: '#E53935', fontSize: 16, fontWeight: '600' }}>
-                Save ({selected.length})
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-          {leagues.map(league => {
-            const leagueTeams = allTeams.filter(t => t.league_short_name === league.short_name);
-            if (leagueTeams.length === 0) return null;
-            return (
-              <View key={league.id} style={{ paddingHorizontal: 16, marginTop: 20 }}>
-                <Text style={{ color: '#888', fontSize: 12, fontWeight: '600',
-                  textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-                  {league.short_name}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {leagueTeams.map(team => {
-                    const isSelected = selected.includes(team.slug);
-                    return (
-                      <TouchableOpacity
-                        key={team.slug}
-                        onPress={() => toggle(team.slug)}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 8,
-                          paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? '#E53935' : '#333',
-                          backgroundColor: isSelected ? '#E5393520' : '#1A1A1A',
-                          width: '47%' }}
-                      >
-                        {team.logo_url && (
-                          <View style={{ width: 28, height: 28, borderRadius: 14,
-                            backgroundColor: '#fff', overflow: 'hidden',
-                            alignItems: 'center', justifyContent: 'center' }}>
-                            <Image source={{ uri: team.logo_url }}
-                              style={{ width: 22, height: 22 }} contentFit="contain" />
-                          </View>
-                        )}
-                        <Text style={{ color: isSelected ? '#fff' : '#aaa',
-                          fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
-                          {team.short_name}
-                        </Text>
-                        {isSelected && <Text style={{ color: '#E53935', fontSize: 14 }}>✓</Text>}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-}
+import { TeamPickerModal } from '../components/TeamPickerModal';
 
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
 
@@ -200,9 +65,9 @@ function EditProfileModal({ visible, onClose, profile, userId, onSaved }: {
           <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Edit Profile</Text>
           <TouchableOpacity onPress={handleSave} disabled={saving}>
             {saving ? (
-              <ActivityIndicator color="#E53935" size="small" />
+              <ActivityIndicator color="#F0B429" size="small" />
             ) : (
-              <Text style={{ color: '#E53935', fontSize: 16, fontWeight: '600' }}>Save</Text>
+              <Text style={{ color: '#F0B429', fontSize: 16, fontWeight: '600' }}>Save</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -285,8 +150,8 @@ function SettingsModal({ visible, onClose, profile, user, userTeams, onEditProfi
           {/* Avatar + user info */}
           <View style={{ alignItems: 'center', paddingVertical: 24 }}>
             <View style={{ width: 80, height: 80, borderRadius: 40, overflow: 'hidden',
-              backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
-              marginBottom: 12, borderWidth: 3, borderColor: '#E53935' }}>
+              backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 12, borderWidth: 3, borderColor: '#F0B429' }}>
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={{ width: 80, height: 80 }} contentFit="cover" />
               ) : (
@@ -360,7 +225,7 @@ function SettingsModal({ visible, onClose, profile, user, userTeams, onEditProfi
             marginHorizontal: 16, marginBottom: 24, overflow: 'hidden' }}>
             <TouchableOpacity onPress={onSignOut}
               style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ color: '#E53935', fontSize: 15 }}>Sign Out</Text>
+              <Text style={{ color: '#F0B429', fontSize: 15 }}>Sign Out</Text>
             </TouchableOpacity>
           </View>
 
@@ -388,7 +253,7 @@ function LockerRow({ icon, label, count, onPress }: {
         borderRadius: 12, backgroundColor: '#1E1E1E', marginBottom: 8 }}>
       <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#2A0A0A',
         alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-        <Ionicons name={icon as any} size={18} color="#E53935" />
+        <Ionicons name={icon as any} size={18} color="#F0B429" />
       </View>
       <Text style={{ color: '#fff', fontSize: 16, flex: 1 }}>{label}</Text>
       {count !== undefined && count > 0 && (
@@ -445,7 +310,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -460,7 +325,7 @@ export default function ProfileScreen() {
           paddingTop: 60, paddingHorizontal: 16, paddingBottom: 20 }}>
           <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>My Locker</Text>
           <TouchableOpacity onPress={() => setSettingsOpen(true)}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E53935',
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0B429',
               alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="person" size={20} color="#fff" />
           </TouchableOpacity>

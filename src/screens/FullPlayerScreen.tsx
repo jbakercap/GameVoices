@@ -197,7 +197,7 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
               <TouchableOpacity
                 onPress={handleSaveBookmark}
                 disabled={addPearl.isPending}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E53935', alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F0B429', alignItems: 'center' }}
               >
                 <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
                   {addPearl.isPending ? 'Saving...' : 'Done'}
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     borderRadius: 2,
   },
   timeRow: {
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
   },
   speedButtonActive: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#F0B429',
   },
   speedLabel: {
     color: '#888',

@@ -18,6 +18,10 @@ import { ScoreboardCard } from '../components/ScoreboardCard';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
 import { useTodayRecap } from '../components/TodayRecapCard';
 import { useUserTeams } from '../hooks/useUserTeams';
+import { TeamPickerModal } from '../components/TeamPickerModal';
+import { useAuth } from '../contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.78;
@@ -105,7 +109,7 @@ function FeaturedCarousel() {
               {/* Progress bar */}
               <View style={{ height: 3, backgroundColor: '#333' }}>
                 <View style={{
-                  height: 3, backgroundColor: '#E53935',
+                  height: 3, backgroundColor: '#F0B429',
                   width: `${Math.round(ep.progress * 100)}%` as any,
                 }} />
               </View>
@@ -116,7 +120,7 @@ function FeaturedCarousel() {
               }}>
                 <TouchableOpacity onPress={handlePlay} style={{
                   width: 44, height: 44, borderRadius: 22,
-                  backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <Text style={{ color: '#fff', fontSize: 14, marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}>
                     {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
@@ -165,7 +169,7 @@ function ScoreboardSection({
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
         {stories.map((story) => {
-          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#E53935';
+          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#F0B429';
           const matchedTeam = teams?.find(t => story.team_slugs?.includes(t.slug));
           return (
             <ScoreboardCard
@@ -215,7 +219,7 @@ function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
         {players.map((player) => {
-          const ringColor = player.primary_color || '#E53935';
+          const ringColor = player.primary_color || '#F0B429';
           const isFollowed = followedIds.includes(player.id);
           return (
             <TouchableOpacity
@@ -244,7 +248,7 @@ function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
                   style={{
                     position: 'absolute', bottom: 0, right: 0,
                     width: 22, height: 22, borderRadius: 11,
-                    backgroundColor: isFollowed ? '#E53935' : '#1E1E1E',
+                    backgroundColor: isFollowed ? '#F0B429' : '#1E1E1E',
                     borderWidth: 1.5, borderColor: '#333',
                     alignItems: 'center', justifyContent: 'center',
                   }}
@@ -311,21 +315,38 @@ function HomeFooter() {
 export default function HomeScreen({ onNavigate }: {
   onNavigate?: (screen: string, params: any) => void;
 }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const teamSlugs = profile?.topic_slugs || [];
   const { data: teams } = useTeamsBySlug(teamSlugs);
   const { data: userTeams = [] } = useUserTeams();
+  const [teamPickerOpen, setTeamPickerOpen] = useState(false);
+
+  const handleSaveTeams = async (slugs: string[]) => {
+    if (!user) return;
+    await supabase.from('profiles').update({ topic_slugs: slugs }).eq('user_id', user.id);
+    await queryClient.invalidateQueries({ queryKey: ['profile'] });
+    setTeamPickerOpen(false);
+  };
 
   if (profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
+      <TeamPickerModal
+        visible={teamPickerOpen}
+        onClose={() => setTeamPickerOpen(false)}
+        selectedTeams={teamSlugs}
+        onSave={handleSaveTeams}
+      />
+
       {/* Sticky top filter bar */}
       <View style={{
         paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
@@ -333,10 +354,12 @@ export default function HomeScreen({ onNavigate }: {
         backgroundColor: '#121212',
       }}>
         {/* Filter icon */}
-        <TouchableOpacity style={{
-          width: 42, height: 42, borderRadius: 12,
-          backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-        }}>
+        <TouchableOpacity
+          onPress={() => setTeamPickerOpen(true)}
+          style={{
+            width: 42, height: 42, borderRadius: 12,
+            backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+          }}>
           <Ionicons name="options-outline" size={20} color="#fff" />
         </TouchableOpacity>
 

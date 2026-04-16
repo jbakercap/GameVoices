@@ -135,7 +135,7 @@ function ShowCard({ show, isFollowing, onToggle }: {
         width: 110, height: 110, borderRadius: 12,
         backgroundColor: '#2A2A2A', overflow: 'hidden', marginBottom: 6,
         borderWidth: isFollowing ? 2 : 0,
-        borderColor: '#E53935',
+        borderColor: '#F0B429',
       }}>
         {show.artwork_url ? (
           <Image source={{ uri: show.artwork_url }} style={{ width: 110, height: 110 }} contentFit="cover" />
@@ -148,7 +148,7 @@ function ShowCard({ show, isFollowing, onToggle }: {
           <View style={{
             position: 'absolute', top: 6, right: 6,
             width: 20, height: 20, borderRadius: 10,
-            backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
           }}>
             <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>✓</Text>
           </View>
@@ -199,7 +199,7 @@ function TeamGrid({ teams, followedSlugs, onToggle }: {
                 <View style={{
                   width: 56, height: 56, borderRadius: 10, backgroundColor: '#fff',
                   borderWidth: followedSlugs.includes(team.slug) ? 3 : 1,
-                  borderColor: followedSlugs.includes(team.slug) ? (team.primary_color || '#E53935') : '#333',
+                  borderColor: followedSlugs.includes(team.slug) ? (team.primary_color || '#F0B429') : '#333',
                   overflow: 'hidden', marginBottom: 4,
                   alignItems: 'center', justifyContent: 'center',
                 }}>
@@ -215,7 +215,7 @@ function TeamGrid({ teams, followedSlugs, onToggle }: {
                   <View style={{
                     position: 'absolute', top: 0, right: 0,
                     width: 16, height: 16, borderRadius: 8,
-                    backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>✓</Text>
                   </View>
@@ -367,7 +367,7 @@ function PopularEpisodeRow({ episode }: { episode: PopularEpisode }) {
       </View>
       <View style={{
         width: 32, height: 32, borderRadius: 16,
-        backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
       }}>
         <Text style={{ color: '#fff', fontSize: 11, marginLeft: 2 }}>▶</Text>
       </View>
@@ -454,7 +454,7 @@ export default function BrowseScreen() {
   if (leaguesLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -525,7 +525,7 @@ export default function BrowseScreen() {
                         style={{ alignItems: 'center', width: 72 }}>
                         <View style={{
                           width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff',
-                          borderWidth: 3, borderColor: team.primary_color || '#E53935',
+                          borderWidth: 3, borderColor: team.primary_color || '#F0B429',
                           overflow: 'hidden', marginBottom: 6,
                           alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -546,7 +546,7 @@ export default function BrowseScreen() {
                 title="Scoreboard"
                 titleRight={
                   <TouchableOpacity onPress={() => navigation.navigate('Trending')}>
-                    <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '600' }}>See All</Text>
+                    <Text style={{ color: '#F0B429', fontSize: 14, fontWeight: '600' }}>See All</Text>
                   </TouchableOpacity>
                 }
                 loading={loadingScoreboard}
@@ -580,7 +580,7 @@ export default function BrowseScreen() {
                   What's dropping today
                 </Text>
                 {loadingPopular ? (
-                  <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+                  <ActivityIndicator color="#F0B429" style={{ padding: 20 }} />
                 ) : (
                   <View style={{ borderTopWidth: 1, borderTopColor: '#1C1C1C' }}>
                     {popularEpisodes.map((ep, i) => (
@@ -666,7 +666,7 @@ export default function BrowseScreen() {
                   Popular Episodes
                 </Text>
                 {loadingPopular ? (
-                  <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+                  <ActivityIndicator color="#F0B429" style={{ padding: 20 }} />
                 ) : (
                   <View style={{ borderTopWidth: 1, borderTopColor: '#1C1C1C' }}>
                     {popularEpisodes.map((ep, i) => (
@@ -714,7 +714,7 @@ function SectionShelf({
         </Text>
       )}
       {loading ? (
-        <ActivityIndicator color="#E53935" style={{ padding: 20 }} />
+        <ActivityIndicator color="#F0B429" style={{ padding: 20 }} />
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}>

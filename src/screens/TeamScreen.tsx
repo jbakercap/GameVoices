@@ -143,7 +143,7 @@ export default function TeamScreen() {
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
 
   const episodes = episodesPages?.pages.flatMap(p => p.episodes) || [];
-  const teamColor = team?.primary_color || '#E53935';
+  const teamColor = team?.primary_color || '#F0B429';
 
   const {
     posts: buzzPosts, isLoading: buzzLoading, isEmpty: buzzEmpty,
@@ -157,7 +157,7 @@ export default function TeamScreen() {
   if (teamLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" />
+        <ActivityIndicator color="#F0B429" />
       </View>
     );
   }
@@ -211,8 +211,8 @@ export default function TeamScreen() {
 
       {/* Live game banner */}
       {scheduleData.liveGame && (
-        <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#E5393520', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#E53935' }}>
-          <Text style={{ color: '#E53935', fontWeight: '700', fontSize: 13 }}>🔴 LIVE: vs {scheduleData.liveGame.opponent}</Text>
+        <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#F0B42920', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#F0B429' }}>
+          <Text style={{ color: '#F0B429', fontWeight: '700', fontSize: 13 }}>🔴 LIVE: vs {scheduleData.liveGame.opponent}</Text>
           {scheduleData.liveGame.homeScore !== undefined && (
             <Text style={{ color: '#fff', fontSize: 12, marginTop: 2 }}>
               {scheduleData.liveGame.homeScore} – {scheduleData.liveGame.awayScore}
@@ -260,16 +260,16 @@ export default function TeamScreen() {
                   {artwork ? <Image source={{ uri: artwork }} style={{ width: 52, height: 52 }} contentFit="cover" /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 18 }}>🎙</Text></View>}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: isCurrent ? '#E53935' : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{item.title}</Text>
+                  <Text style={{ color: isCurrent ? '#F0B429' : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{item.title}</Text>
                   <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>{item.shows?.title} · {formatRelativeDate(item.published_at)}</Text>
                 </View>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isCurrent ? '#E53935' : '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isCurrent ? '#F0B429' : '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ color: '#fff', fontSize: 10 }}>{isCurrent && isPlaying ? '⏸' : '▶'}</Text>
                 </View>
               </TouchableOpacity>
             );
           }}
-          ListEmptyComponent={() => episodesLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No episodes yet</Text>}
+          ListEmptyComponent={() => episodesLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No episodes yet</Text>}
         />
       )}
 
@@ -291,12 +291,12 @@ export default function TeamScreen() {
               </View>
               <TouchableOpacity
                 onPress={() => followShow.mutate({ showId: item.id, isFollowing: item.isFollowed })}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: item.isFollowed ? '#2A2A2A' : '#E53935', borderWidth: item.isFollowed ? 1 : 0, borderColor: '#444' }}>
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: item.isFollowed ? '#2A2A2A' : '#F0B429', borderWidth: item.isFollowed ? 1 : 0, borderColor: '#444' }}>
                 <Text style={{ color: item.isFollowed ? '#aaa' : '#fff', fontSize: 12, fontWeight: '600' }}>{item.isFollowed ? '✓' : '+'}</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           )}
-          ListEmptyComponent={() => showsLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No shows found</Text>}
+          ListEmptyComponent={() => showsLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No shows found</Text>}
         />
       )}
 
@@ -335,7 +335,7 @@ export default function TeamScreen() {
           </View>
 
           {buzzLoading ? (
-            <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} />
           ) : filteredBuzz.length === 0 ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: '#888', fontSize: 15 }}>
@@ -350,7 +350,7 @@ export default function TeamScreen() {
               onEndReached={() => hasNextBuzz && fetchNextBuzz()}
               onEndReachedThreshold={0.4}
               renderItem={({ item }) => <BuzzPostCard post={item} teamColor={teamColor} />}
-              ListFooterComponent={fetchingNextBuzz ? <ActivityIndicator color="#E53935" style={{ marginVertical: 16 }} /> : null}
+              ListFooterComponent={fetchingNextBuzz ? <ActivityIndicator color="#F0B429" style={{ marginVertical: 16 }} /> : null}
             />
           )}
         </View>
@@ -371,7 +371,7 @@ export default function TeamScreen() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={{ color: '#fff', fontSize: 14, fontWeight: item.isFeatured ? '700' : '400' }}>{item.name}</Text>
-                  {item.isFeatured && <Text style={{ color: '#E53935', fontSize: 10 }}>🔥</Text>}
+                  {item.isFeatured && <Text style={{ color: '#F0B429', fontSize: 10 }}>🔥</Text>}
                 </View>
                 <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
                   {[item.position, item.jersey_number ? `#${item.jersey_number}` : null].filter(Boolean).join(' · ')}
@@ -380,7 +380,7 @@ export default function TeamScreen() {
               <Text style={{ color: '#555', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
           )}
-          ListEmptyComponent={() => rosterLoading ? <ActivityIndicator color="#E53935" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No roster data</Text>}
+          ListEmptyComponent={() => rosterLoading ? <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} /> : <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>No roster data</Text>}
         />
       )}
     </View>

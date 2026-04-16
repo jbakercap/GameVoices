@@ -34,7 +34,7 @@ export function FromPlayersYouFollowShelf({ onNavigate }: Props) {
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
         {playerEpisodes.map((row) => {
-          const borderColor = row.team_color || '#E53935';
+          const borderColor = row.team_color || '#F0B429';
           const isCurrentEpisode = currentEpisode?.id === row.episode_id;
 
           const handlePlay = () => {

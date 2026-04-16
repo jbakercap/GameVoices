@@ -253,11 +253,11 @@ function EpisodeRow({ episode }: { episode: any }) {
         onPress={handlePlay}
         style={{
           width: 34, height: 34, borderRadius: 17,
-          backgroundColor: isCurrentEpisode && isPlaying ? '#fff' : '#E53935',
+          backgroundColor: isCurrentEpisode && isPlaying ? '#fff' : '#F0B429',
           alignItems: 'center', justifyContent: 'center',
           marginLeft: 10, flexShrink: 0,
         }}>
-        <Text style={{ color: isCurrentEpisode && isPlaying ? '#E53935' : '#fff', fontSize: 11, marginLeft: 2 }}>
+        <Text style={{ color: isCurrentEpisode && isPlaying ? '#F0B429' : '#fff', fontSize: 11, marginLeft: 2 }}>
           {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
         </Text>
       </TouchableOpacity>
@@ -275,12 +275,12 @@ export default function PlayerDetailScreen({ route, navigation }: any) {
   const { data: stories, isLoading: storiesLoading } = usePlayerStories(player?.id);
   const { data: episodes, isLoading: episodesLoading } = usePlayerEpisodes(player?.id);
 
-  const teamColor = player?.team_primary_color || '#E53935';
+  const teamColor = player?.team_primary_color || '#F0B429';
 
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#E53935" size="large" />
+        <ActivityIndicator color="#F0B429" size="large" />
       </SafeAreaView>
     );
   }
@@ -290,7 +290,7 @@ export default function PlayerDetailScreen({ route, navigation }: any) {
       <SafeAreaView style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: '#888', fontSize: 16 }}>Player not found</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#E53935' }}>Go Back</Text>
+          <Text style={{ color: '#F0B429' }}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -403,7 +403,7 @@ export default function PlayerDetailScreen({ route, navigation }: any) {
           {activeTab === 'stories' && (
             <>
               {storiesLoading ? (
-                <ActivityIndicator color="#E53935" style={{ padding: 24 }} />
+                <ActivityIndicator color="#F0B429" style={{ padding: 24 }} />
               ) : !stories?.length ? (
                 <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                   <Text style={{ color: '#888', fontSize: 14 }}>No recent stories for this player</Text>
@@ -423,7 +423,7 @@ export default function PlayerDetailScreen({ route, navigation }: any) {
           {activeTab === 'episodes' && (
             <>
               {episodesLoading ? (
-                <ActivityIndicator color="#E53935" style={{ padding: 24 }} />
+                <ActivityIndicator color="#F0B429" style={{ padding: 24 }} />
               ) : !episodes?.length ? (
                 <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                   <Text style={{ color: '#888', fontSize: 14 }}>No recent episodes for this player</Text>

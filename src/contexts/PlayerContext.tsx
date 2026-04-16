@@ -35,6 +35,7 @@ interface PlayerContextValue {
   sleepTimerMinutes: number | null;
   setSleepTimer: (minutes: number | null) => void;
   sleepTimerSecondsLeft: number | null;
+  dismissPlayer: () => Promise<void>;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -184,6 +185,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await TrackPlayer.seekBy(-15);
   }, []);
 
+  const dismissPlayer = useCallback(async () => {
+    try {
+      await TrackPlayer.reset();
+    } catch {}
+    setCurrentEpisode(null);
+  }, []);
+
   return (
     <PlayerContext.Provider value={{
       currentEpisode,
@@ -203,6 +211,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       sleepTimerMinutes,
       setSleepTimer,
       sleepTimerSecondsLeft,
+      dismissPlayer,
     }}>
       {children}
     </PlayerContext.Provider>
