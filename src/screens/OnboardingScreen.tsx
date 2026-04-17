@@ -92,7 +92,7 @@ function ProgressBar({ step }: { step: Step }) {
       {steps.map((s, i) => (
         <View key={s} style={{
           flex: 1, height: 3, borderRadius: 2,
-          backgroundColor: i <= current ? '#F0B429' : '#333',
+          backgroundColor: i <= current ? '#FFFFFF' : '#333',
         }} />
       ))}
     </View>
@@ -180,7 +180,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
           <View style={{
             width: 80, height: 80, borderRadius: 20,
-            backgroundColor: '#F0B42920', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center',
             marginBottom: 24,
           }}>
             <Text style={{ fontSize: 40 }}>🎙</Text>
@@ -194,11 +194,11 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
           <TouchableOpacity
             onPress={() => setStep('leagues')}
             style={{
-              backgroundColor: '#F0B429', paddingHorizontal: 48, paddingVertical: 16,
+              backgroundColor: '#FFFFFF', paddingHorizontal: 48, paddingVertical: 16,
               borderRadius: 28, flexDirection: 'row', alignItems: 'center', gap: 8,
             }}>
-            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>Get Started</Text>
-            <Text style={{ color: '#fff', fontSize: 17 }}>›</Text>
+            <Text style={{ color: '#000', fontSize: 17, fontWeight: '700' }}>Get Started</Text>
+            <Text style={{ color: '#000', fontSize: 17 }}>›</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -222,8 +222,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                   onPress={() => toggleLeague(league.slug)}
                   style={{
                     flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: selected ? '#F0B42915' : '#1E1E1E',
-                    borderWidth: 2, borderColor: selected ? '#F0B429' : '#333',
+                    backgroundColor: selected ? 'rgba(255,255,255,0.10)' : '#1E1E1E',
+                    borderWidth: 2, borderColor: selected ? '#FFFFFF' : '#333',
                     borderRadius: 14, padding: 18, marginBottom: 10,
                   }}>
                   <Text style={{ fontSize: 28, marginRight: 16 }}>{league.emoji}</Text>
@@ -233,9 +233,9 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                   {selected && (
                     <View style={{
                       width: 26, height: 26, borderRadius: 13,
-                      backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
+                      <Text style={{ color: '#000', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -253,10 +253,10 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
               onPress={() => setStep('teams')}
               disabled={selectedLeagues.length === 0}
               style={{
-                backgroundColor: selectedLeagues.length > 0 ? '#F0B429' : '#333',
+                backgroundColor: selectedLeagues.length > 0 ? '#FFFFFF' : '#333',
                 paddingVertical: 16, borderRadius: 28, alignItems: 'center',
               }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>
+              <Text style={{ color: selectedLeagues.length > 0 ? '#000' : '#fff', fontSize: 17, fontWeight: '700' }}>
                 Continue {selectedLeagues.length > 0 ? `(${selectedLeagues.length})` : ''}
               </Text>
             </TouchableOpacity>
@@ -278,14 +278,14 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
 
           {teamsLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color="#F0B429" size="large" />
+              <ActivityIndicator color="#FFFFFF" size="large" />
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
               {Object.entries(teamsByLeague).map(([leagueSlug, divisions]) => (
                 <View key={leagueSlug} style={{ marginBottom: 24 }}>
                   <Text style={{
-                    color: '#F0B429', fontSize: 13, fontWeight: '700',
+                    color: '#FFFFFF', fontSize: 13, fontWeight: '700',
                     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
                   }}>
                     {LEAGUES.find(l => l.slug === leagueSlug)?.name || leagueSlug.toUpperCase()}
@@ -310,7 +310,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                                 width: TEAM_TILE_SIZE - 8, height: TEAM_TILE_SIZE - 8,
                                 borderRadius: 12, backgroundColor: '#fff',
                                 borderWidth: selected ? 3 : 1,
-                                borderColor: selected ? (team.primary_color || '#F0B429') : '#333',
+                                borderColor: selected ? (team.primary_color || '#FFFFFF') : '#333',
                                 alignItems: 'center', justifyContent: 'center',
                                 overflow: 'hidden', marginBottom: 6,
                               }}>
@@ -330,10 +330,10 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                                 <View style={{
                                   position: 'absolute', top: 0, right: 4,
                                   width: 18, height: 18, borderRadius: 9,
-                                  backgroundColor: '#F0B429',
+                                  backgroundColor: '#FFFFFF',
                                   alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>✓</Text>
+                                  <Text style={{ color: '#000', fontSize: 10, fontWeight: 'bold' }}>✓</Text>
                                 </View>
                               )}
                               <Text style={{
@@ -362,10 +362,10 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
               onPress={() => setStep('shows')}
               disabled={selectedTeams.length === 0}
               style={{
-                backgroundColor: selectedTeams.length > 0 ? '#F0B429' : '#333',
+                backgroundColor: selectedTeams.length > 0 ? '#FFFFFF' : '#333',
                 paddingVertical: 16, borderRadius: 28, alignItems: 'center',
               }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>
+              <Text style={{ color: selectedTeams.length > 0 ? '#000' : '#fff', fontSize: 17, fontWeight: '700' }}>
                 Continue {selectedTeams.length > 0 ? `(${selectedTeams.length} teams)` : ''}
               </Text>
             </TouchableOpacity>
@@ -387,7 +387,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
 
           {showsLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color="#F0B429" size="large" />
+              <ActivityIndicator color="#FFFFFF" size="large" />
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}>
@@ -404,7 +404,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                         width: tileSize, height: tileSize,
                         backgroundColor: '#2A2A2A', borderRadius: 12, overflow: 'hidden',
                         borderWidth: selected ? 3 : 0,
-                        borderColor: '#F0B429',
+                        borderColor: '#FFFFFF',
                       }}>
                         {show.artwork_url ? (
                           <Image source={{ uri: show.artwork_url }}
@@ -417,15 +417,15 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                         {selected && (
                           <View style={{
                             position: 'absolute', inset: 0,
-                            backgroundColor: '#F0B42940',
+                            backgroundColor: 'rgba(255,255,255,0.25)',
                             alignItems: 'center', justifyContent: 'center',
                           }}>
                             <View style={{
                               width: 36, height: 36, borderRadius: 18,
-                              backgroundColor: '#F0B429',
+                              backgroundColor: '#FFFFFF',
                               alignItems: 'center', justifyContent: 'center',
                             }}>
-                              <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>✓</Text>
+                              <Text style={{ color: '#000', fontSize: 18, fontWeight: 'bold' }}>✓</Text>
                             </View>
                           </View>
                         )}
@@ -468,13 +468,13 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
               onPress={handleComplete}
               disabled={isSaving}
               style={{
-                flex: 2, backgroundColor: '#F0B429',
+                flex: 2, backgroundColor: '#FFFFFF',
                 paddingVertical: 16, borderRadius: 28, alignItems: 'center',
               }}>
               {isSaving ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#000" />
               ) : (
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>
+                <Text style={{ color: '#000', fontSize: 17, fontWeight: '700' }}>
                   Done {followedShows.length > 0 ? `(${followedShows.length})` : ''}
                 </Text>
               )}

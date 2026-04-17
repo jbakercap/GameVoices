@@ -570,7 +570,7 @@ export default function WatchScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#F0B429" size="large" />
+          <ActivityIndicator color="#FFFFFF" size="large" />
         </View>
       ) : activeTab === 'buzz' ? (
         buzzEmpty ? (
@@ -1075,11 +1075,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
   },
   emptyBtnText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 15,
     fontWeight: '600',
   },

@@ -132,12 +132,12 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
         {/* Play/Pause */}
         <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
           {isLoading ? (
-            <ActivityIndicator size="large" color="#fff" />
+            <ActivityIndicator size="large" color="#000" />
           ) : (
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
               size={36}
-              color="#fff"
+              color="#000"
             />
           )}
         </TouchableOpacity>
@@ -197,9 +197,9 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
               <TouchableOpacity
                 onPress={handleSaveBookmark}
                 disabled={addPearl.isPending}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F0B429', alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center' }}
               >
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                <Text style={{ color: '#000', fontSize: 15, fontWeight: '600' }}>
                   {addPearl.isPending ? 'Saving...' : 'Done'}
                 </Text>
               </TouchableOpacity>
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   timeRow: {
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
   },
   speedButtonActive: {
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
   },
   speedLabel: {
     color: '#888',
@@ -334,6 +334,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   speedLabelActive: {
-    color: '#fff',
+    color: '#000',
   },
 });

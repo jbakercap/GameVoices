@@ -8,7 +8,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useTeamStories } from '../hooks/useTeamStories';
 import { useTeamsBySlug } from '../hooks/useTeamsBySlug';
 import { useTrendingPlayers } from '../hooks/useTrendingPlayers';
-import { useYourLineup } from '../hooks/useYourlineup';
+import { useRecentTeamEpisodes } from '../hooks/useRecentTeamEpisodes';
 import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useFollowedPlayers } from '../hooks/useFollowedPlayers';
@@ -26,38 +26,60 @@ import { supabase } from '../lib/supabase';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.78;
 
-// ─── Featured Carousel ────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function FeaturedCarousel() {
-  const { data: episodes, isLoading } = useYourLineup();
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+}
+
+// ─── New Episodes Carousel ────────────────────────────────────────────────────
+
+function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
+  const { data: episodes, isLoading } = useRecentTeamEpisodes(teamSlugs);
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
 
   if (isLoading || !episodes || episodes.length === 0) return null;
 
+  const ARTWORK_SIZE = CARD_WIDTH;
+
   return (
     <View style={{ marginBottom: 28 }}>
+      {/* Section header */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>New Episodes</Text>
+        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
+          Latest drops from your teams
+        </Text>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        pagingEnabled={false}
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH + 12}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
         {episodes.map((ep) => {
-          const mins = Math.round(ep.time_remaining / 60);
-          const totalMins = Math.round(ep.duration_seconds / 60);
-          const isCurrentEpisode = currentEpisode?.id === ep.episodeId;
-          const isRecent = true; // show NEW badge for in-progress episodes
+          const isCurrentEpisode = currentEpisode?.id === ep.id;
+          const isNew = ep.published_at
+            ? Date.now() - new Date(ep.published_at).getTime() < 48 * 60 * 60 * 1000
+            : false;
 
           const handlePlay = () => {
             if (isCurrentEpisode) {
               togglePlayPause();
             } else {
               playEpisode({
-                id: ep.episodeId,
+                id: ep.id,
                 title: ep.title,
-                showTitle: ep.show_name || '',
+                showTitle: ep.show_title || '',
                 artworkUrl: ep.artwork_url || undefined,
                 audioUrl: ep.audio_url,
                 durationSeconds: ep.duration_seconds,
@@ -68,14 +90,14 @@ function FeaturedCarousel() {
           return (
             <View key={ep.id} style={{
               width: CARD_WIDTH, borderRadius: 16, overflow: 'hidden',
-              backgroundColor: '#1E1E1E',
+              backgroundColor: '#1A1A1A',
             }}>
               {/* Artwork */}
-              <View style={{ width: CARD_WIDTH, height: 240, backgroundColor: '#2A2A2A' }}>
+              <View style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE * 0.72, backgroundColor: '#2A2A2A' }}>
                 {ep.artwork_url ? (
                   <Image
                     source={{ uri: ep.artwork_url }}
-                    style={{ width: CARD_WIDTH, height: 240 }}
+                    style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE * 0.72 }}
                     contentFit="cover"
                   />
                 ) : (
@@ -85,53 +107,50 @@ function FeaturedCarousel() {
                 )}
                 {/* Dark gradient overlay */}
                 <View style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 140,
-                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
                 }} />
                 {/* NEW badge */}
-                <View style={{
-                  position: 'absolute', top: 12, right: 12,
-                  backgroundColor: '#22C55E', borderRadius: 20,
-                  paddingHorizontal: 10, paddingVertical: 4,
-                }}>
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>NEW</Text>
-                </View>
-                {/* Title + meta overlay */}
-                <View style={{ position: 'absolute', bottom: 48, left: 14, right: 14 }}>
-                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 }}
-                    numberOfLines={2}>{ep.title}</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 }}>
-                    {totalMins > 0 ? `${totalMins} min` : ''}
-                    {mins > 0 && totalMins > 0 ? ` · ${mins}m left` : ''}
-                  </Text>
-                </View>
+                {isNew && (
+                  <View style={{
+                    position: 'absolute', top: 12, right: 12,
+                    backgroundColor: '#22C55E', borderRadius: 20,
+                    paddingHorizontal: 10, paddingVertical: 4,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>NEW</Text>
+                  </View>
+                )}
               </View>
-              {/* Progress bar */}
-              <View style={{ height: 3, backgroundColor: '#333' }}>
+
+              {/* Info + controls */}
+              <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 }}>
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', lineHeight: 22 }}
+                  numberOfLines={2}>{ep.title}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 }}>
+                  {timeAgo(ep.published_at)}
+                </Text>
+
                 <View style={{
-                  height: 3, backgroundColor: '#F0B429',
-                  width: `${Math.round(ep.progress * 100)}%` as any,
-                }} />
-              </View>
-              {/* Buttons row */}
-              <View style={{
-                flexDirection: 'row', alignItems: 'center',
-                justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12,
-              }}>
-                <TouchableOpacity onPress={handlePlay} style={{
-                  width: 44, height: 44, borderRadius: 22,
-                  backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', alignItems: 'center',
+                  justifyContent: 'space-between', marginTop: 12,
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 14, marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}>
-                    {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={{
-                  width: 36, height: 36, borderRadius: 18,
-                  backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Text style={{ color: '#aaa', fontSize: 16, letterSpacing: 1 }}>···</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity onPress={handlePlay} style={{
+                    width: 46, height: 46, borderRadius: 23,
+                    backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Ionicons
+                      name={isCurrentEpisode && isPlaying ? 'pause' : 'play'}
+                      size={20} color="#fff"
+                      style={{ marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{
+                    width: 38, height: 38, borderRadius: 19,
+                    backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Ionicons name="ellipsis-horizontal" size={18} color="#888" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           );
@@ -169,7 +188,7 @@ function ScoreboardSection({
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
         {stories.map((story) => {
-          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#F0B429';
+          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#FFFFFF';
           const matchedTeam = teams?.find(t => story.team_slugs?.includes(t.slug));
           return (
             <ScoreboardCard
@@ -219,7 +238,7 @@ function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
         {players.map((player) => {
-          const ringColor = player.primary_color || '#F0B429';
+          const ringColor = player.primary_color || '#FFFFFF';
           const isFollowed = followedIds.includes(player.id);
           return (
             <TouchableOpacity
@@ -248,14 +267,14 @@ function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
                   style={{
                     position: 'absolute', bottom: 0, right: 0,
                     width: 22, height: 22, borderRadius: 11,
-                    backgroundColor: isFollowed ? '#F0B429' : '#1E1E1E',
+                    backgroundColor: isFollowed ? '#FFFFFF' : '#1E1E1E',
                     borderWidth: 1.5, borderColor: '#333',
                     alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   <Ionicons
                     name={isFollowed ? 'heart' : 'heart-outline'}
-                    size={11} color={isFollowed ? '#fff' : '#888'}
+                    size={11} color={isFollowed ? '#000' : '#888'}
                   />
                 </TouchableOpacity>
               </View>
@@ -333,7 +352,7 @@ export default function HomeScreen({ onNavigate }: {
   if (profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#F0B429" />
+        <ActivityIndicator color="#FFFFFF" />
       </View>
     );
   }
@@ -388,9 +407,9 @@ export default function HomeScreen({ onNavigate }: {
 
       {/* Scrollable content */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        {/* Featured carousel */}
+        {/* New Episodes carousel */}
         <View style={{ marginTop: 8 }}>
-          <FeaturedCarousel />
+          <NewEpisodesCarousel teamSlugs={teamSlugs} />
         </View>
 
         {/* Scoreboard */}

@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 const STATUS_COLOR: Record<string, string> = {
   pending: '#FF9800',
   approved: '#4CAF50',
-  rejected: '#F0B429',
+  rejected: '#FFFFFF',
   in_review: '#2196F3',
 };
 
@@ -94,10 +94,10 @@ export default function SubmitShowScreen() {
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={submission.isPending || (!rssUrl.trim() && !title.trim())}
-          style={{ backgroundColor: submission.isPending || (!rssUrl.trim() && !title.trim()) ? '#444' : '#F0B429', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 32 }}>
+          style={{ backgroundColor: submission.isPending || (!rssUrl.trim() && !title.trim()) ? '#444' : '#FFFFFF', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 32 }}>
           {submission.isPending
             ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>Submit Show</Text>
+            : <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>Submit Show</Text>
           }
         </TouchableOpacity>
 

@@ -52,12 +52,12 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
             style={styles.playButton}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#000" />
             ) : (
               <Ionicons
                 name={isPlaying ? 'pause' : 'play'}
                 size={24}
-                color="#fff"
+                color="#000"
               />
             )}
           </TouchableOpacity>
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 2,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flexDirection: 'row',
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },

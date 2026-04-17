@@ -171,11 +171,11 @@ function EpisodeRow({ episode }: { episode: any }) {
         onPress={handlePlay}
         style={{
           width: 36, height: 36, borderRadius: 18,
-          backgroundColor: isCurrentEpisode && isPlaying ? '#fff' : '#F0B429',
+          backgroundColor: '#FFFFFF',
           alignItems: 'center', justifyContent: 'center',
           marginLeft: 10, flexShrink: 0,
         }}>
-        <Text style={{ color: isCurrentEpisode && isPlaying ? '#F0B429' : '#fff', fontSize: 12, marginLeft: 2 }}>
+        <Text style={{ color: '#000', fontSize: 12, marginLeft: 2 }}>
           {isCurrentEpisode && isPlaying ? '⏸' : '▶'}
         </Text>
       </TouchableOpacity>
@@ -191,7 +191,7 @@ export default function StoryDetailScreen({ route, navigation }: any) {
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#F0B429" size="large" />
+        <ActivityIndicator color="#FFFFFF" size="large" />
       </SafeAreaView>
     );
   }

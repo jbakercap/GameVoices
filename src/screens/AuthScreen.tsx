@@ -40,7 +40,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <Text style={{ color: '#F0B429', fontSize: 36, fontWeight: 'bold', letterSpacing: -1 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 36, fontWeight: 'bold', letterSpacing: -1 }}>
             GameVoices
           </Text>
           <Text style={{ color: '#888', fontSize: 15, marginTop: 6 }}>
@@ -59,10 +59,10 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
               onPress={() => { setMode(m); setError(''); setMessage(''); }}
               style={{
                 flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center',
-                backgroundColor: mode === m ? '#F0B429' : 'transparent',
+                backgroundColor: mode === m ? '#FFFFFF' : 'transparent',
               }}
             >
-              <Text style={{ color: mode === m ? '#fff' : '#888', fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ color: mode === m ? '#000' : '#888', fontWeight: '600', fontSize: 15 }}>
                 {m === 'login' ? 'Sign In' : 'Sign Up'}
               </Text>
             </TouchableOpacity>
@@ -102,7 +102,7 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
         {/* Error / Message */}
         {error ? (
-          <Text style={{ color: '#F0B429', textAlign: 'center', marginBottom: 16, fontSize: 14 }}>
+          <Text style={{ color: '#FFFFFF', textAlign: 'center', marginBottom: 16, fontSize: 14 }}>
             {error}
           </Text>
         ) : null}
@@ -117,13 +117,13 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
           onPress={handleAuth}
           disabled={loading || !email || !password}
           style={{
-            backgroundColor: loading || !email || !password ? '#444' : '#F0B429',
+            backgroundColor: loading || !email || !password ? '#444' : '#FFFFFF',
             borderRadius: 12, padding: 16, alignItems: 'center',
           }}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+            : <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>
                 {mode === 'login' ? 'Sign In' : 'Create Account'}
               </Text>
           }

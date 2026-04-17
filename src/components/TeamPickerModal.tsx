@@ -79,9 +79,9 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
           <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Favorite Teams</Text>
           <TouchableOpacity onPress={handleSave} disabled={saving}>
             {saving ? (
-              <ActivityIndicator color="#F0B429" size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={{ color: '#F0B429', fontSize: 16, fontWeight: '600' }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
                 Save ({selected.length})
               </Text>
             )}
@@ -108,8 +108,8 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 8,
                           paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
                           borderWidth: 1.5,
-                          borderColor: isSelected ? '#F0B429' : '#333',
-                          backgroundColor: isSelected ? '#F0B42920' : '#1A1A1A',
+                          borderColor: isSelected ? '#FFFFFF' : '#333',
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.10)' : '#1A1A1A',
                           width: '47%' }}
                       >
                         {team.logo_url && (
@@ -124,7 +124,7 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
                           fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
                           {team.short_name}
                         </Text>
-                        {isSelected && <Text style={{ color: '#F0B429', fontSize: 14 }}>✓</Text>}
+                        {isSelected && <Text style={{ color: '#FFFFFF', fontSize: 14 }}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}

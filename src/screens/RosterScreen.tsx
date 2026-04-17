@@ -61,9 +61,9 @@ function EpisodeCard({ episode }: { episode: any }) {
         <View style={{
           position: 'absolute', bottom: 6, right: 6,
           width: 30, height: 30, borderRadius: 15,
-          backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Text style={{ color: '#fff', fontSize: 11, marginLeft: 2 }}>▶</Text>
+          <Text style={{ color: '#000', fontSize: 11, marginLeft: 2 }}>▶</Text>
         </View>
       </View>
       <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }} numberOfLines={2}>
@@ -150,7 +150,7 @@ function TeamPill({ team, selected, onPress }: {
         borderRadius: 20,
         marginRight: 8,
         height: 36,
-        backgroundColor: selected ? '#F0B429' : '#2A2A2A',
+        backgroundColor: selected ? '#FFFFFF' : '#2A2A2A',
       }}>
       {team.logo_url && (
         <View style={{
@@ -161,7 +161,7 @@ function TeamPill({ team, selected, onPress }: {
           <Image source={{ uri: team.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
         </View>
       )}
-      <Text style={{ color: selected ? '#fff' : '#aaa', fontWeight: '600', fontSize: 13, lineHeight: 16 }}>
+      <Text style={{ color: selected ? '#000' : '#aaa', fontWeight: '600', fontSize: 13, lineHeight: 16 }}>
         {team.short_name}
       </Text>
     </TouchableOpacity>
@@ -185,7 +185,7 @@ export default function RosterScreen() {
   if (profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#F0B429" />
+        <ActivityIndicator color="#FFFFFF" />
       </View>
     );
   }
@@ -234,10 +234,10 @@ export default function RosterScreen() {
                 marginRight: 8,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: selectedTeam === null ? '#F0B429' : '#2A2A2A',
+                backgroundColor: selectedTeam === null ? '#FFFFFF' : '#2A2A2A',
               }}>
               <Text style={{
-                color: selectedTeam === null ? '#fff' : '#aaa',
+                color: selectedTeam === null ? '#000' : '#aaa',
                 fontWeight: '600',
                 fontSize: 13,
                 lineHeight: 16,
@@ -259,7 +259,7 @@ export default function RosterScreen() {
           {/* Stories */}
           {storiesLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color="#F0B429" />
+              <ActivityIndicator color="#FFFFFF" />
             </View>
           ) : (
             <FlatList

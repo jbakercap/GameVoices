@@ -34,7 +34,7 @@ export default function PlaylistScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#F0B429" />
+        <ActivityIndicator color="#FFFFFF" />
       </View>
     );
   }
@@ -86,13 +86,13 @@ export default function PlaylistScreen() {
                     {artwork ? <Image source={{ uri: artwork }} style={{ width: 52, height: 52 }} contentFit="cover" /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 18 }}>🎙</Text></View>}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: isCurrent ? '#F0B429' : '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{ep.title}</Text>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>{ep.title}</Text>
                     <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
                       {[ep.show?.title, ep.duration_seconds ? formatDurationHuman(ep.duration_seconds) : null].filter(Boolean).join(' · ')}
                     </Text>
                   </View>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isCurrent ? '#F0B429' : '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: '#fff', fontSize: 10 }}>{isCurrent && isPlaying ? '⏸' : '▶'}</Text>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isCurrent ? '#FFFFFF' : '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: isCurrent ? '#000' : '#fff', fontSize: 10 }}>{isCurrent && isPlaying ? '⏸' : '▶'}</Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity

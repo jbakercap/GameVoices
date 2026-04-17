@@ -65,9 +65,9 @@ function EditProfileModal({ visible, onClose, profile, userId, onSaved }: {
           <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Edit Profile</Text>
           <TouchableOpacity onPress={handleSave} disabled={saving}>
             {saving ? (
-              <ActivityIndicator color="#F0B429" size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={{ color: '#F0B429', fontSize: 16, fontWeight: '600' }}>Save</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Save</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -150,8 +150,8 @@ function SettingsModal({ visible, onClose, profile, user, userTeams, onEditProfi
           {/* Avatar + user info */}
           <View style={{ alignItems: 'center', paddingVertical: 24 }}>
             <View style={{ width: 80, height: 80, borderRadius: 40, overflow: 'hidden',
-              backgroundColor: '#F0B429', alignItems: 'center', justifyContent: 'center',
-              marginBottom: 12, borderWidth: 3, borderColor: '#F0B429' }}>
+              backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 12, borderWidth: 3, borderColor: '#FFFFFF' }}>
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={{ width: 80, height: 80 }} contentFit="cover" />
               ) : (
@@ -225,7 +225,7 @@ function SettingsModal({ visible, onClose, profile, user, userTeams, onEditProfi
             marginHorizontal: 16, marginBottom: 24, overflow: 'hidden' }}>
             <TouchableOpacity onPress={onSignOut}
               style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ color: '#F0B429', fontSize: 15 }}>Sign Out</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 15 }}>Sign Out</Text>
             </TouchableOpacity>
           </View>
 
@@ -253,7 +253,7 @@ function LockerRow({ icon, label, count, onPress }: {
         borderRadius: 12, backgroundColor: '#1E1E1E', marginBottom: 8 }}>
       <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#2A0A0A',
         alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-        <Ionicons name={icon as any} size={18} color="#F0B429" />
+        <Ionicons name={icon as any} size={18} color="#FFFFFF" />
       </View>
       <Text style={{ color: '#fff', fontSize: 16, flex: 1 }}>{label}</Text>
       {count !== undefined && count > 0 && (
@@ -310,7 +310,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#F0B429" />
+        <ActivityIndicator color="#FFFFFF" />
       </View>
     );
   }
@@ -325,9 +325,9 @@ export default function ProfileScreen() {
           paddingTop: 60, paddingHorizontal: 16, paddingBottom: 20 }}>
           <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>My Locker</Text>
           <TouchableOpacity onPress={() => setSettingsOpen(true)}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0B429',
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
               alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="person" size={20} color="#fff" />
+            <Ionicons name="person" size={20} color="#000" />
           </TouchableOpacity>
         </View>
 

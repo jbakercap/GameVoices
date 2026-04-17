@@ -128,7 +128,7 @@ function TopicCard({ signal }: { signal: TrendingSignal }) {
               </View>
             )}
             <View style={styles.episodeMiniPlayBtn}>
-              <Ionicons name="play" size={10} color="#fff" />
+              <Ionicons name="play" size={10} color="#000" />
             </View>
           </View>
           <View style={styles.episodeMiniInfo}>
@@ -189,7 +189,7 @@ function PlayerCard({
         style={[styles.followHeart, isFollowed && styles.followHeartActive]}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name={isFollowed ? 'heart' : 'heart-outline'} size={10} color={isFollowed ? '#fff' : '#666'} />
+        <Ionicons name={isFollowed ? 'heart' : 'heart-outline'} size={10} color={isFollowed ? '#000' : '#666'} />
       </TouchableOpacity>
 
       {/* Info */}
@@ -375,7 +375,7 @@ export default function TrendingScreen() {
                     value: t.slug,
                     label: t.short_name,
                     logoUrl: t.logo_url,
-                    color: topicsTeam === t.slug ? (t.primary_color || '#F0B429') : null,
+                    color: topicsTeam === t.slug ? (t.primary_color || '#FFFFFF') : null,
                   })),
                 ]}
                 selected={topicsTeam}
@@ -385,7 +385,7 @@ export default function TrendingScreen() {
           </View>
 
           {signalsLoading ? (
-            <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#FFFFFF" style={{ marginTop: 40 }} />
           ) : signals.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="flame-outline" size={48} color="#444" />
@@ -427,7 +427,7 @@ export default function TrendingScreen() {
           </View>
 
           {playersLoading ? (
-            <ActivityIndicator color="#F0B429" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#FFFFFF" style={{ marginTop: 40 }} />
           ) : players.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="people-outline" size={48} color="#444" />
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabItemActive: {
-    borderBottomColor: '#F0B429',
+    borderBottomColor: '#FFFFFF',
   },
   tabLabel: {
     color: '#666',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pillActive: {
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     borderColor: 'transparent',
   },
   pillText: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pillTextActive: {
-    color: '#fff',
+    color: '#000',
   },
   pillLogo: {
     width: 16,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   followHeartActive: {
-    backgroundColor: '#F0B429',
+    backgroundColor: '#FFFFFF',
     borderColor: 'transparent',
   },
   playerFirst: {
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   playerEps: {
-    color: '#F0B429',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
