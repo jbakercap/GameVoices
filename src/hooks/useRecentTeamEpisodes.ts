@@ -11,6 +11,7 @@ export interface RecentEpisode {
   show_id: string;
   show_title: string | null;
   show_artwork_url: string | null;
+  team_slug: string | null;
 }
 
 export function useRecentTeamEpisodes(teamSlugs: string[]) {
@@ -19,16 +20,23 @@ export function useRecentTeamEpisodes(teamSlugs: string[]) {
     queryFn: async (): Promise<RecentEpisode[]> => {
       if (teamSlugs.length === 0) return [];
 
-      // Step 1: get show IDs for followed teams
+      // Step 1: get show IDs + team_slugs for followed teams
       const { data: showsData, error: showsError } = await supabase
         .from('shows')
-        .select('id')
+        .select('id, team_slugs')
         .in('status', ['active', 'stale'])
         .overlaps('team_slugs', teamSlugs);
 
       if (showsError) throw showsError;
       const showIds = (showsData || []).map((s: any) => s.id);
       if (showIds.length === 0) return [];
+
+      // Map show_id → first matching followed team slug
+      const showTeamMap = new Map<string, string>();
+      for (const show of showsData || []) {
+        const matched = (show.team_slugs || []).find((s: string) => teamSlugs.includes(s));
+        if (matched) showTeamMap.set(show.id, matched);
+      }
 
       // Step 2: get most recent episodes from those shows
       const { data, error } = await supabase
@@ -54,6 +62,7 @@ export function useRecentTeamEpisodes(teamSlugs: string[]) {
         show_id: ep.show_id,
         show_title: ep.show?.title || null,
         show_artwork_url: ep.show?.artwork_url || null,
+        team_slug: showTeamMap.get(ep.show_id) || null,
       }));
     },
     enabled: teamSlugs.length > 0,

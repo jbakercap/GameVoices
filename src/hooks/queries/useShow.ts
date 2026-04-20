@@ -22,6 +22,7 @@ export interface Show {
   hosts_json: any;
   youtube_url: string | null;
   twitter_handle: string | null;
+  teams?: { primary_color: string | null } | null;
 }
 
 export interface ShowEpisode {
@@ -57,7 +58,8 @@ export function useShow(showId: string | undefined) {
           hosts_json, is_featured, episode_count, last_episode_at,
           publisher, status, claim_status, claimed_by_user_id,
           format, league_id, team_id,
-          youtube_url, twitter_handle
+          youtube_url, twitter_handle,
+          teams ( primary_color )
         `)
         .eq('id', showId)
         .maybeSingle();

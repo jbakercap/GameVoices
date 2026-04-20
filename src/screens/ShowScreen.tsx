@@ -15,9 +15,10 @@ import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDurationHuman, formatRelativeDate } from '../lib/formatters';
 
-function EpisodeRow({ episode, showArtwork, onNavigate }: {
+function EpisodeRow({ episode, showArtwork, teamColor, onNavigate }: {
   episode: any;
   showArtwork: string | null;
+  teamColor?: string;
   onNavigate?: (screen: string, params: any) => void;
 }) {
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
@@ -38,6 +39,7 @@ function EpisodeRow({ episode, showArtwork, onNavigate }: {
         artworkUrl: artwork || undefined,
         audioUrl: episode.audio_url,
         durationSeconds: episode.duration_seconds,
+        teamColor,
       });
     }
   };
@@ -189,7 +191,7 @@ export default function ShowScreen() {
                 backgroundColor: isFollowed ? '#2A2A2A' : '#FFFFFF',
                 borderWidth: isFollowed ? 1 : 0, borderColor: '#444',
               }}>
-              <Text style={{ color: isFollowed ? '#aaa' : '#fff', fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ color: isFollowed ? '#aaa' : '#000', fontWeight: '600', fontSize: 15 }}>
                 {isFollowed ? '✓ Following' : '+ Follow'}
               </Text>
             </TouchableOpacity>
@@ -224,6 +226,7 @@ export default function ShowScreen() {
               key={ep.id}
               episode={ep}
               showArtwork={show.artwork_url}
+              teamColor={show.teams?.primary_color || undefined}
               onNavigate={(screen, params) => navigation.navigate(screen, params)}
             />
           ))}

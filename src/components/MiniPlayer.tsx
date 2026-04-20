@@ -15,11 +15,13 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
     ? (progress.position / progress.duration) * 100
     : 0;
 
+  const accentColor = currentEpisode.teamColor || '#FFFFFF';
+
   return (
     <TouchableOpacity activeOpacity={0.95} onPress={onPress} style={styles.container}>
       {/* Progress bar at top */}
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progressPercent}%` as any }]} />
+        <View style={[styles.progressFill, { width: `${progressPercent}%` as any, backgroundColor: accentColor }]} />
       </View>
 
       <View style={styles.content}>
@@ -49,7 +51,7 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
         <View style={styles.controls}>
           <TouchableOpacity
             onPress={(e) => { e.stopPropagation(); togglePlayPause(); }}
-            style={styles.playButton}
+            style={[styles.playButton, { backgroundColor: accentColor }]}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#000" />
@@ -95,7 +97,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 2,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     flexDirection: 'row',
@@ -136,7 +137,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },

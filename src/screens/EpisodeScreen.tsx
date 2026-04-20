@@ -12,12 +12,12 @@ import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDurationHuman, formatRelativeDate, formatDuration } from '../lib/formatters';
 
-function ProgressBar({ position, duration }: { position: number; duration: number }) {
+function ProgressBar({ position, duration, color = '#FFFFFF' }: { position: number; duration: number; color?: string }) {
   if (!duration || duration === 0) return null;
   const pct = Math.min(1, position / duration);
   return (
     <View style={{ height: 4, backgroundColor: '#333', borderRadius: 2, marginVertical: 8 }}>
-      <View style={{ height: 4, backgroundColor: '#FFFFFF', borderRadius: 2, width: `${pct * 100}%` as any }} />
+      <View style={{ height: 4, backgroundColor: color, borderRadius: 2, width: `${pct * 100}%` as any }} />
     </View>
   );
 }
@@ -34,6 +34,8 @@ export default function EpisodeScreen() {
 
   const isCurrent = currentEpisode?.id === episodeId;
   const artwork = episode?.artwork_url || episode?.shows?.artwork_url;
+  const teamColor = episode?.shows?.teams?.primary_color || undefined;
+  const accentColor = teamColor || '#FFFFFF';
 
   const handlePlay = () => {
     if (!episode) return;
@@ -49,6 +51,7 @@ export default function EpisodeScreen() {
         audioUrl: episode.audio_url,
         durationSeconds: episode.duration_seconds ?? undefined,
         startTime: startTime > 10 ? startTime : undefined,
+        teamColor,
       });
     }
   };
@@ -129,7 +132,7 @@ export default function EpisodeScreen() {
         {/* Progress bar */}
         {showPlaybackDuration > 0 && (
           <View style={{ marginBottom: 4 }}>
-            <ProgressBar position={showPlaybackPosition} duration={showPlaybackDuration} />
+            <ProgressBar position={showPlaybackPosition} duration={showPlaybackDuration} color={accentColor} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: '#555', fontSize: 11 }}>{formatDuration(showPlaybackPosition)}</Text>
               <Text style={{ color: '#555', fontSize: 11 }}>{formatDuration(showPlaybackDuration)}</Text>
@@ -141,7 +144,7 @@ export default function EpisodeScreen() {
         <TouchableOpacity
           onPress={handlePlay}
           style={{
-            backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 14,
+            backgroundColor: accentColor, borderRadius: 14, paddingVertical: 14,
             alignItems: 'center', marginVertical: 16,
           }}>
           <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>

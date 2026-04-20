@@ -10,6 +10,7 @@ interface TeamOption {
   slug: string;
   short_name: string;
   logo_url: string | null;
+  primary_color: string | null;
   league_short_name: string;
 }
 
@@ -38,7 +39,7 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
     async function load() {
       const [teamsRes, leaguesRes] = await Promise.all([
         supabase.from('teams')
-          .select('slug, short_name, logo_url, leagues!inner(short_name)')
+          .select('slug, short_name, logo_url, primary_color, leagues!inner(short_name)')
           .eq('is_active', true)
           .order('display_order'),
         supabase.from('leagues')
@@ -49,6 +50,7 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
       if (teamsRes.data) {
         setAllTeams(teamsRes.data.map((t: any) => ({
           slug: t.slug, short_name: t.short_name, logo_url: t.logo_url,
+          primary_color: t.primary_color || null,
           league_short_name: t.leagues?.short_name || '',
         })));
       }
@@ -101,6 +103,7 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {leagueTeams.map(team => {
                     const isSelected = selected.includes(team.slug);
+                    const accent = team.primary_color || '#FFFFFF';
                     return (
                       <TouchableOpacity
                         key={team.slug}
@@ -108,8 +111,8 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 8,
                           paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
                           borderWidth: 1.5,
-                          borderColor: isSelected ? '#FFFFFF' : '#333',
-                          backgroundColor: isSelected ? 'rgba(255,255,255,0.10)' : '#1A1A1A',
+                          borderColor: isSelected ? accent : '#333',
+                          backgroundColor: isSelected ? `${accent}1A` : '#1A1A1A',
                           width: '47%' }}
                       >
                         {team.logo_url && (
@@ -124,7 +127,7 @@ export function TeamPickerModal({ visible, onClose, selectedTeams, onSave }: {
                           fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
                           {team.short_name}
                         </Text>
-                        {isSelected && <Text style={{ color: '#FFFFFF', fontSize: 14 }}>✓</Text>}
+                        {isSelected && <Text style={{ color: accent, fontSize: 14 }}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}

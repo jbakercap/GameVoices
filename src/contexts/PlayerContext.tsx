@@ -15,6 +15,7 @@ export interface Episode {
   audioUrl: string;
   durationSeconds?: number;
   startTime?: number;
+  teamColor?: string;
 }
 
 interface PlayerContextValue {

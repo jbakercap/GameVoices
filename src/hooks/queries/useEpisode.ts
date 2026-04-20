@@ -13,6 +13,7 @@ export interface EpisodeShow {
   claimed_by_user_id: string | null;
   league_id: string | null;
   team_id: string | null;
+  teams?: { primary_color: string | null } | null;
 }
 
 export interface EpisodeDetail {
@@ -49,7 +50,8 @@ export function useEpisode(episodeId: string | undefined) {
           shows (
             id, title, description, artwork_url, publisher,
             episode_count, claim_status, claimed_by_user_id,
-            league_id, team_id
+            league_id, team_id,
+            teams ( primary_color )
           )
         `)
         .eq('id', episodeId)

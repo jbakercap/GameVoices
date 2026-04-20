@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions,
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Modal, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,9 +14,9 @@ import { usePlayer } from '../contexts/PlayerContext';
 import { useFollowedPlayers } from '../hooks/useFollowedPlayers';
 import { useToggleFollowPlayer } from '../hooks/mutations/useToggleFollowPlayer';
 import { FromPlayersYouFollowShelf } from '../components/FromPlayersYouFollowShelf';
-import { ScoreboardCard } from '../components/ScoreboardCard';
+import { GameScoreCard } from '../components/ScoreboardCard';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
-import { useTodayRecap } from '../components/TodayRecapCard';
+import { useRecentGames } from '../hooks/useRecentGames';
 import { useUserTeams } from '../hooks/useUserTeams';
 import { TeamPickerModal } from '../components/TeamPickerModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,9 +41,13 @@ function timeAgo(dateStr: string | null): string {
 
 // ─── New Episodes Carousel ────────────────────────────────────────────────────
 
-function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
+function NewEpisodesCarousel({ teamSlugs, teams, onNavigate }: {
+  teamSlugs: string[]; teams: any[];
+  onNavigate?: (screen: string, params: any) => void;
+}) {
   const { data: episodes, isLoading } = useRecentTeamEpisodes(teamSlugs);
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
+  const [menuEp, setMenuEp] = useState<typeof episodes extends (infer T)[] | undefined ? T : any | null>(null);
 
   if (isLoading || !episodes || episodes.length === 0) return null;
 
@@ -69,8 +73,11 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
         {episodes.map((ep) => {
           const isCurrentEpisode = currentEpisode?.id === ep.id;
           const isNew = ep.published_at
-            ? Date.now() - new Date(ep.published_at).getTime() < 48 * 60 * 60 * 1000
+            ? Date.now() - new Date(ep.published_at).getTime() < 24 * 60 * 60 * 1000
             : false;
+          const teamColor = ep.team_slug
+            ? teams.find(t => t.slug === ep.team_slug)?.primary_color || null
+            : null;
 
           const handlePlay = () => {
             if (isCurrentEpisode) {
@@ -83,6 +90,7 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
                 artworkUrl: ep.artwork_url || undefined,
                 audioUrl: ep.audio_url,
                 durationSeconds: ep.duration_seconds,
+                teamColor: teamColor || undefined,
               });
             }
           };
@@ -136,7 +144,7 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
                 }}>
                   <TouchableOpacity onPress={handlePlay} style={{
                     width: 46, height: 46, borderRadius: 23,
-                    backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: teamColor || '#2A2A2A', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Ionicons
                       name={isCurrentEpisode && isPlaying ? 'pause' : 'play'}
@@ -144,10 +152,12 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
                       style={{ marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity style={{
-                    width: 38, height: 38, borderRadius: 19,
-                    backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <TouchableOpacity
+                    onPress={() => setMenuEp(ep)}
+                    style={{
+                      width: 38, height: 38, borderRadius: 19,
+                      backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+                    }}>
                     <Ionicons name="ellipsis-horizontal" size={18} color="#888" />
                   </TouchableOpacity>
                 </View>
@@ -156,6 +166,36 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
           );
         })}
       </ScrollView>
+
+      {/* Episode options menu */}
+      <Modal visible={!!menuEp} transparent animationType="fade" onRequestClose={() => setMenuEp(null)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setMenuEp(null)}
+        >
+          <TouchableOpacity activeOpacity={1}>
+            <View style={{ backgroundColor: '#1E1E1E', borderRadius: 16, width: 280, overflow: 'hidden' }}>
+              {[
+                { icon: 'close-circle-outline', label: 'Remove from Up Next', onPress: () => setMenuEp(null) },
+                { icon: 'radio-outline', label: 'Go to Episode', onPress: () => { setMenuEp(null); onNavigate?.('EpisodeDetail', { episodeId: menuEp?.id }); } },
+                { icon: 'share-social-outline', label: 'Share Episode', onPress: () => { setMenuEp(null); Share.share({ message: `${menuEp?.title} — ${menuEp?.show_title || ''}` }); } },
+                { icon: 'list-outline', label: 'Add to Queue', onPress: () => setMenuEp(null) },
+                { icon: 'musical-notes-outline', label: 'Add to Playlist', onPress: () => setMenuEp(null) },
+                { icon: 'bookmark-outline', label: 'Save Episode', onPress: () => setMenuEp(null) },
+                { icon: 'radio-outline', label: 'Go to Show', onPress: () => { setMenuEp(null); if (menuEp?.show_id) onNavigate?.('ShowDetail', { showId: menuEp.show_id }); } },
+              ].map((item, i) => (
+                <TouchableOpacity key={i} onPress={item.onPress}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15,
+                    borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#2A2A2A' }}>
+                  <Ionicons name={item.icon as any} size={20} color="#aaa" style={{ marginRight: 14, width: 24 }} />
+                  <Text style={{ color: '#fff', fontSize: 15 }}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -163,22 +203,21 @@ function NewEpisodesCarousel({ teamSlugs }: { teamSlugs: string[] }) {
 // ─── Scoreboard Section ───────────────────────────────────────────────────────
 
 function ScoreboardSection({
-  teamSlugs, teams, onNavigate,
+  teamSlugs, onNavigate,
 }: {
   teamSlugs: string[];
-  teams: any[];
   onNavigate?: (screen: string, params: any) => void;
 }) {
-  const { data: stories, isLoading } = useTodayRecap(teamSlugs);
+  const { data: games, isLoading } = useRecentGames(teamSlugs);
 
-  if (isLoading || !stories || stories.length === 0) return null;
+  if (isLoading || !games || games.length === 0) return null;
 
   return (
     <View style={{ marginBottom: 28 }}>
       <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
         <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Scoreboard</Text>
         <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
-          Game results covered across multiple podcasts
+          Recent results for your teams
         </Text>
       </View>
       <ScrollView
@@ -187,20 +226,9 @@ function ScoreboardSection({
         decelerationRate="fast"
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
-        {stories.map((story) => {
-          const teamColor = teams?.find(t => story.team_slugs?.includes(t.slug))?.primary_color || '#FFFFFF';
-          const matchedTeam = teams?.find(t => story.team_slugs?.includes(t.slug));
-          return (
-            <ScoreboardCard
-              key={story.id}
-              story={story as any}
-              teamColor={teamColor}
-              matchedTeam={matchedTeam}
-              onNavigate={onNavigate}
-              compact
-            />
-          );
-        })}
+        {games.map(game => (
+          <GameScoreCard key={game.id} game={game} onNavigate={onNavigate} />
+        ))}
       </ScrollView>
     </View>
   );
@@ -386,12 +414,15 @@ export default function HomeScreen({ onNavigate }: {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 10 }}>
           {(teams || []).map((team) => (
-            <View key={team.id} style={{
-              width: 46, height: 46, borderRadius: 23,
-              backgroundColor: '#fff', overflow: 'hidden',
-              borderWidth: 3, borderColor: team.primary_color || '#333',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
+            <TouchableOpacity
+              key={team.id}
+              onPress={() => onNavigate?.('TeamDetail', { teamSlug: team.slug })}
+              style={{
+                width: 46, height: 46, borderRadius: 23,
+                backgroundColor: '#fff', overflow: 'hidden',
+                borderWidth: 3, borderColor: team.primary_color || '#333',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
               {team.logo_url ? (
                 <Image source={{ uri: team.logo_url }}
                   style={{ width: 36, height: 36 }} contentFit="contain" />
@@ -400,7 +431,7 @@ export default function HomeScreen({ onNavigate }: {
                   {team.short_name?.slice(0, 2)}
                 </Text>
               )}
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
@@ -409,13 +440,12 @@ export default function HomeScreen({ onNavigate }: {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* New Episodes carousel */}
         <View style={{ marginTop: 8 }}>
-          <NewEpisodesCarousel teamSlugs={teamSlugs} />
+          <NewEpisodesCarousel teamSlugs={teamSlugs} teams={teams || []} onNavigate={onNavigate} />
         </View>
 
         {/* Scoreboard */}
         <ScoreboardSection
           teamSlugs={teamSlugs}
-          teams={teams || []}
           onNavigate={onNavigate}
         />
 

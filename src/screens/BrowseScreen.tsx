@@ -544,11 +544,6 @@ export default function BrowseScreen() {
             {(loadingScoreboard || gameStories.length > 0) && (
               <SectionShelf
                 title="Scoreboard"
-                titleRight={
-                  <TouchableOpacity onPress={() => navigation.navigate('Trending')}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>See All</Text>
-                  </TouchableOpacity>
-                }
                 loading={loadingScoreboard}
               >
                 {gameStories.map(story => (

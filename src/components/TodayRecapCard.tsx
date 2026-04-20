@@ -7,13 +7,34 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 
-interface RecapStory {
+export interface RecapStory {
   id: string;
   headline: string;
   story_type: string;
   team_slugs: string[];
   event_date: string | null;
   episode_count: number;
+}
+
+export interface StoryTeam {
+  slug: string;
+  name: string;
+  short_name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+}
+
+export interface TodayRecapResult {
+  stories: RecapStory[];
+  teamsBySlug: Record<string, StoryTeam>;
+}
+
+// Extract both team names from a game headline (winner + loser)
+export function extractTeamNames(headline: string): string[] {
+  const wonPattern = /^(.+?)\s+(?:beat|defeat|edge|top|down|outlast|outscor|nip|blank|rout|crush|stun|overcome|hold off|hold on)\s+(.+?)\s+\d+-\d+/i;
+  const lostPattern = /^(.+?)\s+(?:lost? to|fell? to|drop|edged by|fall to|drops? to|beaten by|defeated by)\s+(.+?)\s+\d+-\d+/i;
+  const m = headline.match(wonPattern) || headline.match(lostPattern);
+  return m ? [m[1].trim(), m[2].trim()] : [];
 }
 
 const LEAGUE_HOURS: Record<string, number> = {
@@ -29,23 +50,49 @@ const MAX_HOURS = 144;
 export function useTodayRecap(teamSlugs: string[]) {
   return useQuery({
     queryKey: ['today-recap', teamSlugs],
-    queryFn: async (): Promise<RecapStory[]> => {
-      if (teamSlugs.length === 0) return [];
+    queryFn: async (): Promise<TodayRecapResult> => {
+      if (teamSlugs.length === 0) return { stories: [], teamsBySlug: {} };
 
-      // Fetch league slugs for followed teams
-      const { data: teamsData } = await supabase
+      // Step 1: fetch followed teams + their league info
+      const { data: followedTeamsData } = await supabase
         .from('teams')
-        .select('slug, leagues!inner(slug)')
+        .select('slug, name, short_name, logo_url, primary_color, league_id, leagues!inner(slug)')
         .in('slug', teamSlugs);
 
       const teamLeagueMap: Record<string, string> = {};
-      for (const t of teamsData || []) {
-        teamLeagueMap[t.slug] = (t.leagues as any)?.slug || '';
+      const teamsBySlug: Record<string, StoryTeam> = {};
+      const leagueIds = new Set<string>();
+
+      for (const t of followedTeamsData || []) {
+        const leagueSlug = (t.leagues as any)?.slug || '';
+        teamLeagueMap[t.slug] = leagueSlug;
+        if (t.league_id) leagueIds.add(t.league_id);
+        teamsBySlug[t.slug] = {
+          slug: t.slug, name: t.name,
+          short_name: t.short_name,
+          logo_url: t.logo_url, primary_color: t.primary_color,
+        };
       }
 
-      // Fetch with the maximum window, filter per-league client-side
-      const maxCutoff = new Date(Date.now() - MAX_HOURS * 60 * 60 * 1000).toISOString();
+      // Step 2: fetch ALL teams in those leagues so every opponent has logo + color
+      if (leagueIds.size > 0) {
+        const { data: leagueTeamsData } = await supabase
+          .from('teams')
+          .select('slug, name, short_name, logo_url, primary_color')
+          .in('league_id', Array.from(leagueIds));
+        for (const t of leagueTeamsData || []) {
+          if (!teamsBySlug[t.slug]) {
+            teamsBySlug[t.slug] = {
+              slug: t.slug, name: t.name,
+              short_name: t.short_name,
+              logo_url: t.logo_url, primary_color: t.primary_color,
+            };
+          }
+        }
+      }
 
+      // Step 3: fetch stories
+      const maxCutoff = new Date(Date.now() - MAX_HOURS * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('stories')
         .select('id, headline, story_type, team_slugs, event_date, episode_count, created_at')
@@ -60,14 +107,15 @@ export function useTodayRecap(teamSlugs: string[]) {
       if (error) throw error;
 
       const now = Date.now();
-      return (data || []).filter(story => {
-        // Find the league for this story via the first matching followed team
+      const stories = (data || []).filter(story => {
         const matchedSlug = (story.team_slugs || []).find((s: string) => teamLeagueMap[s]);
         const leagueSlug = matchedSlug ? teamLeagueMap[matchedSlug] : '';
         const hours = LEAGUE_HOURS[leagueSlug] ?? DEFAULT_HOURS;
         const cutoff = now - hours * 60 * 60 * 1000;
         return new Date(story.created_at).getTime() >= cutoff;
       });
+
+      return { stories, teamsBySlug };
     },
     enabled: teamSlugs.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -104,7 +152,8 @@ interface TodayRecapCardProps {
 
 export function TodayRecapCard({ teamSlugs, teams, onNavigate }: TodayRecapCardProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const { data: stories, isLoading } = useTodayRecap(teamSlugs);
+  const { data, isLoading } = useTodayRecap(teamSlugs);
+  const stories = data?.stories;
 
   if (isLoading || !stories || stories.length === 0) return null;
 
