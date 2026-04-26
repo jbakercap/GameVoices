@@ -8,6 +8,7 @@ import TrackPlayer from 'react-native-track-player';
 import { View, Text, Modal } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
 import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
 import MiniPlayer from './src/components/MiniPlayer';
 import FullPlayerScreen from './src/screens/FullPlayerScreen';
@@ -103,6 +104,7 @@ function MainApp() {
 
 function AppContent() {
   const { user, isLoading, needsOnboarding, setNeedsOnboarding } = useAuth();
+  usePushNotifications();
 
   if (isLoading) {
     return (

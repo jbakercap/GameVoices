@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useAddPearl } from '../hooks/mutations/useAddPearl';
+import { useQueue } from '../hooks/queries/useQueue';
+import { useRemoveFromQueue } from '../hooks/mutations/useRemoveFromQueue';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH - 64;
@@ -38,6 +40,8 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
   } = usePlayer();
 
   const addPearl = useAddPearl();
+  const { data: queue = [] } = useQueue();
+  const removeFromQueue = useRemoveFromQueue();
   const [bookmarkModal, setBookmarkModal] = useState<{ timestamp: number } | null>(null);
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [showOptions, setShowOptions] = useState(false);
@@ -333,9 +337,50 @@ export default function FullPlayerScreen({ onClose }: { onClose: () => void }) {
               <Text style={{ color: '#666', fontSize: 12 }}>{currentEpisode.showTitle}</Text>
             </View>
           </View>
-          <View style={{ marginTop: 24, paddingHorizontal: 24 }}>
-            <Text style={{ color: '#555', fontSize: 14, textAlign: 'center' }}>Nothing else queued up</Text>
-          </View>
+
+          {/* Queue items */}
+          {queue.length === 0 ? (
+            <View style={{ marginTop: 24, paddingHorizontal: 24 }}>
+              <Text style={{ color: '#555', fontSize: 14, textAlign: 'center' }}>Nothing else queued up</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ marginTop: 16 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ color: '#888', fontSize: 11, fontWeight: '600', paddingHorizontal: 24, marginBottom: 8 }}>
+                UP NEXT
+              </Text>
+              {queue.map((item, i) => {
+                const ep = item.episodes;
+                if (!ep) return null;
+                return (
+                  <View key={item.id}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24,
+                      paddingVertical: 12, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#2A2A2A' }}>
+                    {ep.artwork_url ? (
+                      <Image source={{ uri: ep.artwork_url }}
+                        style={{ width: 44, height: 44, borderRadius: 6 }} contentFit="cover" />
+                    ) : (
+                      <View style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: '#2A2A2A',
+                        alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="mic" size={20} color="#555" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={2}>
+                        {ep.title}
+                      </Text>
+                      <Text style={{ color: '#666', fontSize: 12 }} numberOfLines={1}>
+                        {ep.shows?.title}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removeFromQueue.mutate(item.episode_id)}
+                      style={{ padding: 8 }}>
+                      <Ionicons name="close" size={18} color="#555" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
       </Modal>
 

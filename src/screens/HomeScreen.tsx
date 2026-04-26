@@ -1,315 +1,144 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Modal, Share,
+  View, Text, FlatList, TouchableOpacity, Modal, ScrollView,
+  TextInput, KeyboardAvoidingView, Platform, Share, ActivityIndicator,
+  Dimensions, RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useProfile } from '../hooks/useProfile';
-import { useTeamStories } from '../hooks/useTeamStories';
-import { useTeamsBySlug } from '../hooks/useTeamsBySlug';
-import { useTrendingPlayers } from '../hooks/useTrendingPlayers';
-import { useRecentTeamEpisodes } from '../hooks/useRecentTeamEpisodes';
-import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../contexts/PlayerContext';
-import { useFollowedPlayers } from '../hooks/useFollowedPlayers';
-import { useToggleFollowPlayer } from '../hooks/mutations/useToggleFollowPlayer';
-import { FromPlayersYouFollowShelf } from '../components/FromPlayersYouFollowShelf';
-import { GameScoreCard } from '../components/ScoreboardCard';
-import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
-import { useRecentGames } from '../hooks/useRecentGames';
 import { useUserTeams } from '../hooks/useUserTeams';
+import { useTeamsBySlug } from '../hooks/useTeamsBySlug';
+import { useRecentTeamEpisodes, RecentEpisode } from '../hooks/useRecentTeamEpisodes';
+import { useRecentGames } from '../hooks/useRecentGames';
 import { TeamPickerModal } from '../components/TeamPickerModal';
+import { formatDurationHuman } from '../lib/formatters';
+import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.78;
+import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
+import { useSaveEpisode } from '../hooks/mutations/useSaveEpisode';
+import { useEpisodeLikes, useIsEpisodeLiked } from '../hooks/queries/useEpisodeLikes';
+import { useToggleEpisodeLike } from '../hooks/mutations/useToggleEpisodeLike';
+import { useEpisodeComments, useEpisodeCommentCount, EpisodeComment } from '../hooks/queries/useEpisodeComments';
+import { useAddEpisodeComment } from '../hooks/mutations/useAddEpisodeComment';
+import { useToggleCommentLike } from '../hooks/mutations/useToggleCommentLike';
+import { formatRelativeDate } from '../lib/formatters';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function shareEpisode(episode: RecentEpisode) {
+  const show = episode.show_title || 'GameVoices';
+  const duration = episode.duration ? ` · ${formatDurationHuman(episode.duration)}` : '';
+  Share.share({
+    title: episode.title,
+    message: `🎙️ ${episode.title}\n${show}${duration}\n\nListen on GameVoices`,
+  });
+}
+
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const hrs = Math.floor(diffMs / 3_600_000);
+  if (hrs < 1) return 'now';
+  if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
-  return `${days} day${days !== 1 ? 's' : ''} ago`;
+  return `${days}d`;
 }
 
-// ─── New Episodes Carousel ────────────────────────────────────────────────────
 
-function NewEpisodesCarousel({ teamSlugs, teams, onNavigate }: {
-  teamSlugs: string[]; teams: any[];
-  onNavigate?: (screen: string, params: any) => void;
-}) {
-  const { data: episodes, isLoading } = useRecentTeamEpisodes(teamSlugs);
-  const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
-  const [menuEp, setMenuEp] = useState<typeof episodes extends (infer T)[] | undefined ? T : any | null>(null);
-
-  if (isLoading || !episodes || episodes.length === 0) return null;
-
-  const ARTWORK_SIZE = CARD_WIDTH;
-
-  return (
-    <View style={{ marginBottom: 28 }}>
-      {/* Section header */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
-        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>New Episodes</Text>
-        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
-          Latest drops from your teams
-        </Text>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={CARD_WIDTH + 12}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-      >
-        {episodes.map((ep) => {
-          const isCurrentEpisode = currentEpisode?.id === ep.id;
-          const isNew = ep.published_at
-            ? Date.now() - new Date(ep.published_at).getTime() < 24 * 60 * 60 * 1000
-            : false;
-          const teamColor = ep.team_slug
-            ? teams.find(t => t.slug === ep.team_slug)?.primary_color || null
-            : null;
-
-          const handlePlay = () => {
-            if (isCurrentEpisode) {
-              togglePlayPause();
-            } else {
-              playEpisode({
-                id: ep.id,
-                title: ep.title,
-                showTitle: ep.show_title || '',
-                artworkUrl: ep.artwork_url || undefined,
-                audioUrl: ep.audio_url,
-                durationSeconds: ep.duration_seconds,
-                teamColor: teamColor || undefined,
-              });
-            }
-          };
-
-          return (
-            <View key={ep.id} style={{
-              width: CARD_WIDTH, borderRadius: 16, overflow: 'hidden',
-              backgroundColor: '#1A1A1A',
-            }}>
-              {/* Artwork */}
-              <View style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE * 0.72, backgroundColor: '#2A2A2A' }}>
-                {ep.artwork_url ? (
-                  <Image
-                    source={{ uri: ep.artwork_url }}
-                    style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE * 0.72 }}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 48 }}>🎙</Text>
-                  </View>
-                )}
-                {/* Dark gradient overlay */}
-                <View style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
-                  backgroundColor: 'rgba(0,0,0,0.55)',
-                }} />
-                {/* NEW badge */}
-                {isNew && (
-                  <View style={{
-                    position: 'absolute', top: 12, right: 12,
-                    backgroundColor: '#22C55E', borderRadius: 20,
-                    paddingHorizontal: 10, paddingVertical: 4,
-                  }}>
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>NEW</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Info + controls */}
-              <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 }}>
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', lineHeight: 22 }}
-                  numberOfLines={2}>{ep.title}</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 }}>
-                  {timeAgo(ep.published_at)}
-                </Text>
-
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  justifyContent: 'space-between', marginTop: 12,
-                }}>
-                  <TouchableOpacity onPress={handlePlay} style={{
-                    width: 46, height: 46, borderRadius: 23,
-                    backgroundColor: teamColor || '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Ionicons
-                      name={isCurrentEpisode && isPlaying ? 'pause' : 'play'}
-                      size={20} color="#fff"
-                      style={{ marginLeft: isCurrentEpisode && isPlaying ? 0 : 2 }}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setMenuEp(ep)}
-                    style={{
-                      width: 38, height: 38, borderRadius: 19,
-                      backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                    <Ionicons name="ellipsis-horizontal" size={18} color="#888" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
-
-      {/* Episode options menu */}
-      <Modal visible={!!menuEp} transparent animationType="fade" onRequestClose={() => setMenuEp(null)}>
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}
-          activeOpacity={1}
-          onPress={() => setMenuEp(null)}
-        >
-          <TouchableOpacity activeOpacity={1}>
-            <View style={{ backgroundColor: '#1E1E1E', borderRadius: 16, width: 280, overflow: 'hidden' }}>
-              {[
-                { icon: 'close-circle-outline', label: 'Remove from Up Next', onPress: () => setMenuEp(null) },
-                { icon: 'radio-outline', label: 'Go to Episode', onPress: () => { setMenuEp(null); onNavigate?.('EpisodeDetail', { episodeId: menuEp?.id }); } },
-                { icon: 'share-social-outline', label: 'Share Episode', onPress: () => { setMenuEp(null); Share.share({ message: `${menuEp?.title} — ${menuEp?.show_title || ''}` }); } },
-                { icon: 'list-outline', label: 'Add to Queue', onPress: () => setMenuEp(null) },
-                { icon: 'musical-notes-outline', label: 'Add to Playlist', onPress: () => setMenuEp(null) },
-                { icon: 'bookmark-outline', label: 'Save Episode', onPress: () => setMenuEp(null) },
-                { icon: 'radio-outline', label: 'Go to Show', onPress: () => { setMenuEp(null); if (menuEp?.show_id) onNavigate?.('ShowDetail', { showId: menuEp.show_id }); } },
-              ].map((item, i) => (
-                <TouchableOpacity key={i} onPress={item.onPress}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15,
-                    borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#2A2A2A' }}>
-                  <Ionicons name={item.icon as any} size={20} color="#aaa" style={{ marginRight: 14, width: 24 }} />
-                  <Text style={{ color: '#fff', fontSize: 15 }}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
+function darkenColor(hex: string, amount = 0.2): string {
+  const cleaned = hex.replace('#', '');
+  if (cleaned.length !== 6) return '#1E2A3A';
+  const num = parseInt(cleaned, 16);
+  const r = Math.max(0, Math.floor(((num >> 16) & 0xff) * (1 - amount)));
+  const g = Math.max(0, Math.floor(((num >> 8) & 0xff) * (1 - amount)));
+  const b = Math.max(0, Math.floor((num & 0xff) * (1 - amount)));
+  return `rgb(${r},${g},${b})`;
 }
 
-// ─── Scoreboard Section ───────────────────────────────────────────────────────
 
-function ScoreboardSection({
-  teamSlugs, onNavigate,
-}: {
-  teamSlugs: string[];
-  onNavigate?: (screen: string, params: any) => void;
-}) {
+// ─── Compact Scoreboard ───────────────────────────────────────────────────────
+
+function CompactScoreboard({ teamSlugs }: { teamSlugs: string[] }) {
   const { data: games, isLoading } = useRecentGames(teamSlugs);
-
   if (isLoading || !games || games.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 28 }}>
-      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
-        <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Scoreboard</Text>
-        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
-          Recent results for your teams
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-      >
-        {games.map(game => (
-          <GameScoreCard key={game.id} game={game} onNavigate={onNavigate} />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
+    <View style={{ borderBottomWidth: 1, borderBottomColor: '#222' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {games.map((game, i) => {
+          const followedIsHome = game.followedTeamSlug === game.home_team_slug;
+          const myTeam = followedIsHome ? game.homeTeam : game.awayTeam;
+          const oppTeam = followedIsHome ? game.awayTeam : game.homeTeam;
+          const myScore = followedIsHome ? game.home_score : game.away_score;
+          const oppScore = followedIsHome ? game.away_score : game.home_score;
+          const myWon = myScore > oppScore;
+          const date = game.event_date
+            ? new Date(game.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
+            : '';
 
-// ─── Who's Buzzing ────────────────────────────────────────────────────────────
-
-function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
-  teamSlugs: string[];
-  onNavigate?: (screen: string, params: any) => void;
-}) {
-  const { data: followedPlayers = [] } = useFollowedPlayers();
-  const toggleFollow = useToggleFollowPlayer();
-  const followedIds = followedPlayers.map(p => p.id);
-
-  const { data: players, isLoading } = useTrendingPlayers({
-    teamSlugs: teamSlugs.length > 0 ? teamSlugs : null,
-    followedIds,
-    limit: 20,
-  });
-
-  if (isLoading || !players || players.length === 0) return null;
-
-  return (
-    <View style={{ marginBottom: 28 }}>
-      <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>Who's Buzzing</Text>
-          <Ionicons name="chevron-forward" size={20} color="#fff" style={{ marginTop: 2 }} />
-        </TouchableOpacity>
-        <Text style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
-          Most mentioned in podcasts this week
-        </Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
-        {players.map((player) => {
-          const ringColor = player.primary_color || '#FFFFFF';
-          const isFollowed = followedIds.includes(player.id);
           return (
-            <TouchableOpacity
-              onPress={() => onNavigate?.('PlayerDetail', { playerSlug: player.slug })}
-              key={player.id}
-              style={{ alignItems: 'center', width: 80 }}
+            <View
+              key={game.id}
+              style={{
+                borderRightWidth: i < games.length - 1 ? 1 : 0,
+                borderRightColor: '#222',
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                minWidth: 155,
+              }}
             >
-              <View style={{ position: 'relative', marginBottom: 8 }}>
+              <Text style={{ color: '#555', fontSize: 10, fontWeight: '600', marginBottom: 6 }}>
+                FINAL · {date}
+              </Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
                 <View style={{
-                  width: 68, height: 68, borderRadius: 34,
-                  borderWidth: 3, borderColor: ringColor,
-                  backgroundColor: '#2A2A2A', overflow: 'hidden',
-                  alignItems: 'center', justifyContent: 'center',
+                  width: 20, height: 20, borderRadius: 10,
+                  backgroundColor: myTeam?.primary_color || '#333',
+                  alignItems: 'center', justifyContent: 'center', marginRight: 8,
                 }}>
-                  {player.headshot_url ? (
-                    <Image source={{ uri: player.headshot_url }}
-                      style={{ width: 68, height: 68 }} contentFit="cover" />
+                  {myTeam?.logo_url ? (
+                    <Image source={{ uri: myTeam.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
                   ) : (
-                    <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold' }}>
-                      {player.name.charAt(0)}
+                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: 'bold' }}>
+                      {myTeam?.short_name?.slice(0, 2) || '?'}
                     </Text>
                   )}
                 </View>
-                <TouchableOpacity
-                  onPress={() => toggleFollow.mutate({ playerId: player.id, isFollowing: isFollowed })}
-                  style={{
-                    position: 'absolute', bottom: 0, right: 0,
-                    width: 22, height: 22, borderRadius: 11,
-                    backgroundColor: isFollowed ? '#FFFFFF' : '#1E1E1E',
-                    borderWidth: 1.5, borderColor: '#333',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons
-                    name={isFollowed ? 'heart' : 'heart-outline'}
-                    size={11} color={isFollowed ? '#000' : '#888'}
-                  />
-                </TouchableOpacity>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>
+                  {myTeam?.short_name || '—'}
+                </Text>
+                <Text style={{ color: myWon ? '#fff' : '#555', fontSize: 13, fontWeight: myWon ? '800' : '400' }}>
+                  {myScore}
+                </Text>
               </View>
-              <Text style={{ color: '#ccc', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>
-                {player.name}
-              </Text>
-            </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{
+                  width: 20, height: 20, borderRadius: 10,
+                  backgroundColor: oppTeam?.primary_color || '#333',
+                  alignItems: 'center', justifyContent: 'center', marginRight: 8,
+                }}>
+                  {oppTeam?.logo_url ? (
+                    <Image source={{ uri: oppTeam.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: 'bold' }}>
+                      {oppTeam?.short_name?.slice(0, 2) || '?'}
+                    </Text>
+                  )}
+                </View>
+                <Text style={{ color: '#777', fontSize: 13, flex: 1 }}>
+                  {oppTeam?.short_name || '—'}
+                </Text>
+                <Text style={{ color: myWon ? '#555' : '#fff', fontSize: 13, fontWeight: myWon ? '400' : '800' }}>
+                  {oppScore}
+                </Text>
+              </View>
+            </View>
           );
         })}
       </ScrollView>
@@ -317,42 +146,691 @@ function WhoBuzzingShelf({ teamSlugs, onNavigate }: {
   );
 }
 
-// ─── Footer ───────────────────────────────────────────────────────────────────
+// ─── Episode Card (iMessage music share style) ────────────────────────────────
 
-function HomeFooter() {
+interface EpisodeCardProps {
+  episode: RecentEpisode;
+  teamColor: string;
+  isCurrentlyPlaying: boolean;
+  isPlaying: boolean;
+  onPress: () => void;
+  compact?: boolean;
+}
+
+function EpisodeCard({ episode, teamColor, isCurrentlyPlaying, isPlaying, onPress, compact }: EpisodeCardProps) {
+  const artwork = episode.artwork_url || episode.show_artwork_url;
+  const artSize = compact ? 48 : 56;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={onPress}
+      style={{ borderRadius: 14, overflow: 'hidden' }}
+    >
+      <LinearGradient
+        colors={[darkenColor(teamColor, 0.55), darkenColor(teamColor, 0.05)]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ flexDirection: 'row', alignItems: 'center', padding: 10, gap: 12 }}
+      >
+      {/* Podcast artwork */}
+      <View style={{
+        width: artSize, height: artSize, borderRadius: 9,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        overflow: 'hidden', flexShrink: 0,
+      }}>
+        {artwork ? (
+          <Image source={{ uri: artwork }} style={{ width: artSize, height: artSize }} contentFit="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="mic" size={22} color="rgba(255,255,255,0.4)" />
+          </View>
+        )}
+      </View>
+
+      {/* Title + duration */}
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontSize: compact ? 13 : 14, fontWeight: '700', lineHeight: 19 }} numberOfLines={2}>
+          {episode.title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 3 }}>
+          {formatDurationHuman(episode.duration_seconds)}
+        </Text>
+      </View>
+
+      {/* Play / Pause */}
+      <View style={{
+        width: 38, height: 38, borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Ionicons
+          name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
+          size={17} color="#fff"
+          style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
+        />
+      </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Three-Dots Menu ──────────────────────────────────────────────────────────
+
+interface EpisodeMenuProps {
+  episode: RecentEpisode;
+  visible: boolean;
+  onClose: () => void;
+  onNavigate?: (screen: string, params: any) => void;
+}
+
+function EpisodeMenu({ episode, visible, onClose, onNavigate }: EpisodeMenuProps) {
+  const addToQueue = useAddToQueue();
+  const saveEpisode = useSaveEpisode();
+
+  const items = [
+    {
+      icon: 'radio-outline' as const,
+      label: 'Go to Episode',
+      onPress: () => { onClose(); onNavigate?.('EpisodeDetail', { episodeId: episode.id }); },
+    },
+    {
+      icon: 'share-social-outline' as const,
+      label: 'Share Episode',
+      onPress: () => { onClose(); shareEpisode(episode); },
+    },
+    {
+      icon: 'list-outline' as const,
+      label: 'Add to Queue',
+      onPress: () => { addToQueue.mutate(episode.id); onClose(); },
+    },
+    {
+      icon: 'musical-notes-outline' as const,
+      label: 'Add to Playlist',
+      onPress: () => { onClose(); },
+    },
+    {
+      icon: 'bookmark-outline' as const,
+      label: 'Save Episode',
+      onPress: () => { saveEpisode.mutate({ episodeId: episode.id, isSaved: false }); onClose(); },
+    },
+    {
+      icon: 'radio-outline' as const,
+      label: 'Go to Show',
+      onPress: () => { onClose(); onNavigate?.('ShowDetail', { showId: episode.show_id }); },
+    },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity activeOpacity={1}>
+          <View style={{ backgroundColor: '#1E1E1E', borderRadius: 16, width: 280, overflow: 'hidden' }}>
+            {items.map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={item.onPress}
+                style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: 20, paddingVertical: 15,
+                  borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#2A2A2A',
+                }}
+              >
+                <Ionicons name={item.icon} size={20} color="#aaa" style={{ marginRight: 14, width: 24 }} />
+                <Text style={{ color: '#fff', fontSize: 15 }}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ─── Comment Row ─────────────────────────────────────────────────────────────
+
+function renderCommentContent(content: string, accentColor: string) {
+  const parts = content.split(/(@\w+)/g);
+  return (
+    <Text style={{ color: '#ccc', fontSize: 14, lineHeight: 20 }}>
+      {parts.map((part, i) =>
+        part.startsWith('@') ? (
+          <Text key={i} style={{ color: accentColor, fontWeight: '600' }}>{part}</Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        )
+      )}
+    </Text>
+  );
+}
+
+interface CommentRowProps {
+  comment: EpisodeComment;
+  isReply?: boolean;
+  teamColor: string;
+  episodeId: string;
+  onReply: () => void;
+}
+
+function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }: CommentRowProps) {
+  const displayName = comment.profile?.display_name || 'Anonymous';
+  const initial = displayName.charAt(0).toUpperCase();
+  const avatarSize = isReply ? 28 : 36;
+  const toggleLike = useToggleCommentLike();
+
   return (
     <View style={{
-      marginHorizontal: 16, marginTop: 8, marginBottom: 32,
-      backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24,
-      alignItems: 'center',
+      flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+      paddingLeft: isReply ? 52 : 16, paddingRight: 16, paddingVertical: 10,
     }}>
-      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 16 }}>
-        Connect with GameVoices:
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 24, marginBottom: 16 }}>
-        <TouchableOpacity style={{
-          width: 44, height: 44, borderRadius: 22,
-          borderWidth: 1.5, borderColor: '#444',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Ionicons name="logo-instagram" size={22} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={{
-          width: 44, height: 44, borderRadius: 22,
-          borderWidth: 1.5, borderColor: '#444',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Ionicons name="logo-tiktok" size={22} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={{
-          width: 44, height: 44, borderRadius: 22,
-          borderWidth: 1.5, borderColor: '#444',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Ionicons name="logo-snapchat" size={22} color="#fff" />
+      {/* Avatar */}
+      <View style={{
+        width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2,
+        backgroundColor: '#2A2A2A', overflow: 'hidden',
+        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        {comment.profile?.avatar_url ? (
+          <Image source={{ uri: comment.profile.avatar_url }} style={{ width: avatarSize, height: avatarSize }} contentFit="cover" />
+        ) : (
+          <Text style={{ color: '#fff', fontSize: isReply ? 11 : 14, fontWeight: '700' }}>{initial}</Text>
+        )}
+      </View>
+
+      {/* Content */}
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{displayName}</Text>
+          <Text style={{ color: '#555', fontSize: 12 }}>{timeAgo(comment.created_at)}</Text>
+        </View>
+        {renderCommentContent(comment.content, teamColor)}
+
+        {/* Reply button */}
+        <TouchableOpacity onPress={onReply} style={{ marginTop: 6 }}>
+          <Text style={{ color: '#555', fontSize: 12, fontWeight: '600' }}>Reply</Text>
         </TouchableOpacity>
       </View>
-      <Text style={{ color: '#555', fontSize: 12 }}>© 2026 GameVoices</Text>
+
+      {/* Like button */}
+      <TouchableOpacity
+        onPress={() => toggleLike.mutate({ commentId: comment.id, episodeId, isLiked: comment.is_liked })}
+        style={{ alignItems: 'center', gap: 2, paddingTop: 2 }}
+      >
+        <Ionicons
+          name={comment.is_liked ? 'heart' : 'heart-outline'}
+          size={18}
+          color={comment.is_liked ? '#e11d48' : '#555'}
+        />
+        {comment.like_count > 0 && (
+          <Text style={{ color: comment.is_liked ? '#e11d48' : '#555', fontSize: 11 }}>
+            {comment.like_count}
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Comments Sheet ───────────────────────────────────────────────────────────
+
+interface CommentsSheetProps {
+  episode: RecentEpisode | null;
+  teamColor: string;
+  visible: boolean;
+  onClose: () => void;
+}
+
+function CommentsSheet({ episode, teamColor, visible, onClose }: CommentsSheetProps) {
+  const [comment, setComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const inputRef = useRef<TextInput>(null);
+
+  const { data: allComments = [], isLoading: commentsLoading } = useEpisodeComments(episode?.id ?? '');
+  const addComment = useAddEpisodeComment();
+
+  // Build threaded structure (must be before early return to respect hooks order)
+  const topLevel = useMemo(() => allComments.filter((c) => !c.parent_id), [allComments]);
+  const repliesMap = useMemo(() => {
+    const map = new Map<string, EpisodeComment[]>();
+    for (const c of allComments) {
+      if (c.parent_id) {
+        const arr = map.get(c.parent_id) ?? [];
+        arr.push(c);
+        map.set(c.parent_id, arr);
+      }
+    }
+    return map;
+  }, [allComments]);
+
+  // Unique commenters for @mention autocomplete
+  const commenters = useMemo(() => {
+    const seen = new Set<string>();
+    return allComments
+      .map((c) => c.profile?.display_name)
+      .filter((name): name is string => !!name && !seen.has(name) && !!seen.add(name));
+  }, [allComments]);
+
+  if (!episode) return null;
+
+  const mentionSuggestions = mentionQuery !== null
+    ? commenters.filter((n) => n.toLowerCase().includes(mentionQuery))
+    : [];
+
+  const handleTextChange = (text: string) => {
+    setComment(text);
+    const lastWord = text.split(/\s/).pop() ?? '';
+    if (lastWord.startsWith('@')) {
+      setMentionQuery(lastWord.slice(1).toLowerCase());
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const insertMention = (name: string) => {
+    const words = comment.split(/\s/);
+    words[words.length - 1] = `@${name} `;
+    setComment(words.join(' '));
+    setMentionQuery(null);
+  };
+
+  const startReply = (parentComment: EpisodeComment) => {
+    const name = parentComment.profile?.display_name || 'User';
+    setReplyingTo({ id: parentComment.id, name });
+    setComment(`@${name} `);
+    setMentionQuery(null);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setComment('');
+    setMentionQuery(null);
+  };
+
+  const handleSubmitComment = async () => {
+    if (!comment.trim()) return;
+    await addComment.mutateAsync({
+      episodeId: episode.id,
+      content: comment,
+      parentId: replyingTo?.id,
+    });
+    // Auto-expand the thread we just replied to
+    if (replyingTo) {
+      setExpandedReplies((prev) => new Set([...prev, replyingTo.id]));
+    }
+    setComment('');
+    setReplyingTo(null);
+    setMentionQuery(null);
+  };
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => {
+      const next = new Set(prev);
+      next.has(commentId) ? next.delete(commentId) : next.add(commentId);
+      return next;
+    });
+  };
+
+  const SHEET_HEIGHT = Dimensions.get('window').height * 0.75;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} presentationStyle="overFullScreen" statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{
+            backgroundColor: '#121212',
+            borderTopLeftRadius: 20, borderTopRightRadius: 20,
+            height: SHEET_HEIGHT,
+          }}>
+            {/* Drag handle */}
+            <View style={{
+              width: 36, height: 4, borderRadius: 2,
+              backgroundColor: '#444', alignSelf: 'center',
+              marginTop: 12, marginBottom: 16,
+            }} />
+
+            {/* Header */}
+            <Text style={{
+              color: '#fff', fontSize: 18, fontWeight: '700',
+              paddingHorizontal: 20, marginBottom: 12,
+            }}>
+              Comments{allComments.length > 0 ? ` (${allComments.length})` : ''}
+            </Text>
+
+            <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
+
+            {/* Comments list */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 8 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {commentsLoading ? (
+                <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+              ) : topLevel.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+                  <Text style={{ color: '#555', fontSize: 15 }}>No comments yet</Text>
+                  <Text style={{ color: '#444', fontSize: 13, marginTop: 4 }}>Be the first to share your take</Text>
+                </View>
+              ) : (
+                topLevel.map((c) => {
+                  const replies = repliesMap.get(c.id) ?? [];
+                  const isExpanded = expandedReplies.has(c.id);
+                  return (
+                    <View key={c.id}>
+                      <CommentRow
+                        comment={c}
+                        teamColor={teamColor}
+                        episodeId={episode.id}
+                        onReply={() => startReply(c)}
+                      />
+                      {/* Replies toggle */}
+                      {replies.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => toggleReplies(c.id)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 62, paddingBottom: 8 }}
+                        >
+                          <View style={{ width: 20, height: 1, backgroundColor: '#444' }} />
+                          <Text style={{ color: '#888', fontSize: 12, fontWeight: '600' }}>
+                            {isExpanded ? 'Hide replies' : `View ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {/* Replies */}
+                      {isExpanded && replies.map((r) => (
+                        <CommentRow
+                          key={r.id}
+                          comment={r}
+                          isReply
+                          teamColor={teamColor}
+                          episodeId={episode.id}
+                          onReply={() => startReply(c)}
+                        />
+                      ))}
+                      <View style={{ height: 1, backgroundColor: '#1A1A1A', marginHorizontal: 16 }} />
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* @mention autocomplete */}
+            {mentionSuggestions.length > 0 && (
+              <View style={{
+                backgroundColor: '#1E1E1E', borderTopWidth: 1, borderTopColor: '#2A2A2A',
+                maxHeight: 120,
+              }}>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {mentionSuggestions.map((name) => (
+                    <TouchableOpacity
+                      key={name}
+                      onPress={() => insertMention(name)}
+                      style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#2A2A2A' }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 14 }}>@{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Replying-to banner */}
+            {replyingTo && (
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                paddingHorizontal: 16, paddingVertical: 8,
+                backgroundColor: '#1A1A1A',
+              }}>
+                <Text style={{ color: '#888', fontSize: 13 }}>
+                  Replying to <Text style={{ color: teamColor, fontWeight: '600' }}>@{replyingTo.name}</Text>
+                </Text>
+                <TouchableOpacity onPress={cancelReply}>
+                  <Ionicons name="close" size={16} color="#888" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Comment input */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              paddingHorizontal: 16, paddingTop: 12, paddingBottom: 34,
+              borderTopWidth: 1, borderTopColor: '#1A1A1A',
+              backgroundColor: '#121212',
+            }}>
+              <TextInput
+                ref={inputRef}
+                value={comment}
+                onChangeText={handleTextChange}
+                placeholder={replyingTo ? `Reply to @${replyingTo.name}...` : 'Add a comment...'}
+                placeholderTextColor="#555"
+                style={{
+                  flex: 1, backgroundColor: '#1E1E1E', borderRadius: 20,
+                  paddingHorizontal: 16, paddingVertical: 10,
+                  color: '#fff', fontSize: 14,
+                }}
+                returnKeyType="send"
+                onSubmitEditing={handleSubmitComment}
+              />
+              <TouchableOpacity
+                onPress={handleSubmitComment}
+                disabled={!comment.trim() || addComment.isPending}
+                style={{
+                  width: 36, height: 36, borderRadius: 18,
+                  backgroundColor: comment.trim() ? teamColor : '#2A2A2A',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Episode Feed Post ────────────────────────────────────────────────────────
+
+interface EpisodeFeedPostProps {
+  episode: RecentEpisode;
+  teamColor: string;
+  onOpenComments: (episode: RecentEpisode, color: string) => void;
+  onNavigate?: (screen: string, params: any) => void;
+}
+
+function EpisodeFeedPost({ episode, teamColor, onOpenComments, onNavigate }: EpisodeFeedPostProps) {
+  const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const { data: likeCount = 0 } = useEpisodeLikes(episode.id);
+  const { data: isLiked = false } = useIsEpisodeLiked(episode.id);
+  const { data: commentCount = 0 } = useEpisodeCommentCount(episode.id);
+  const toggleLike = useToggleEpisodeLike();
+  const addToQueue = useAddToQueue();
+  const saveEpisode = useSaveEpisode();
+
+  const isCurrentlyPlaying = currentEpisode?.id === episode.id;
+
+  const handlePlay = useCallback(() => {
+    if (isCurrentlyPlaying) {
+      togglePlayPause();
+    } else {
+      playEpisode({
+        id: episode.id,
+        title: episode.title,
+        showTitle: episode.show_title || '',
+        artworkUrl: episode.artwork_url || episode.show_artwork_url || undefined,
+        audioUrl: episode.audio_url,
+        durationSeconds: episode.duration_seconds,
+        teamColor,
+      });
+    }
+  }, [isCurrentlyPlaying, episode, teamColor, togglePlayPause, playEpisode]);
+
+  return (
+    <View style={{ borderBottomWidth: 1, borderBottomColor: '#1A1A1A', paddingVertical: 14 }}>
+
+      {/* Post header */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
+        {/* Show avatar */}
+        <TouchableOpacity
+          onPress={() => onNavigate?.('ShowDetail', { showId: episode.show_id })}
+          style={{ marginRight: 12, marginTop: 2 }}
+        >
+          <View style={{
+            width: 44, height: 44, borderRadius: 22,
+            backgroundColor: teamColor,
+            overflow: 'hidden',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {episode.show_artwork_url ? (
+              <Image source={{ uri: episode.show_artwork_url }} style={{ width: 44, height: 44 }} contentFit="cover" />
+            ) : (
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>
+                {(episode.show_title || 'S').charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Show name + handle + time */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>
+              {episode.show_title || 'Unknown Show'}
+            </Text>
+            <Text style={{ color: '#555', fontSize: 13 }}>·</Text>
+            <Text style={{ color: '#555', fontSize: 13 }}>{timeAgo(episode.published_at)}</Text>
+          </View>
+        </View>
+
+        {/* Three dots */}
+        <TouchableOpacity
+          onPress={() => setMenuOpen(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ paddingLeft: 8, paddingTop: 2 }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color="#555" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Episode card */}
+      <View style={{ paddingHorizontal: 16, marginTop: 10 }}>
+        <EpisodeCard
+          episode={episode}
+          teamColor={teamColor}
+          isCurrentlyPlaying={isCurrentlyPlaying}
+          isPlaying={isPlaying}
+          onPress={handlePlay}
+        />
+      </View>
+
+      {/* Action bar */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 20, marginTop: 12,
+      }}>
+        {/* Like */}
+        <TouchableOpacity
+          onPress={() => toggleLike.mutate({ episodeId: episode.id, isLiked })}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 24 }}
+        >
+          <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={22} color={isLiked ? '#e11d48' : '#555'} />
+          {likeCount > 0 && (
+            <Text style={{ color: isLiked ? '#e11d48' : '#555', fontSize: 14 }}>{likeCount}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Comment */}
+        <TouchableOpacity
+          onPress={() => onOpenComments(episode, teamColor)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+        >
+          <Ionicons name="chatbubble-outline" size={21} color="#555" />
+          {commentCount > 0 && (
+            <Text style={{ color: '#555', fontSize: 14 }}>{commentCount}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Share — pushed to right */}
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <TouchableOpacity
+            onPress={() => shareEpisode(episode)}
+          >
+            <Ionicons name="share-outline" size={22} color="#555" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Three-dots menu modal */}
+      <EpisodeMenu
+        episode={episode}
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={onNavigate}
+      />
+    </View>
+  );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function FeedEmpty({ hasTeams, onFollowTeams }: { hasTeams: boolean; onFollowTeams: () => void }) {
+  if (!hasTeams) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 }}>
+        <View style={{
+          width: 72, height: 72, borderRadius: 36,
+          backgroundColor: '#1E1E1E', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 20,
+        }}>
+          <Ionicons name="people-outline" size={36} color="#444" />
+        </View>
+        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 10 }}>
+          Follow your teams
+        </Text>
+        <Text style={{ color: '#666', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+          Pick the teams you follow and we'll fill your feed with their best podcast content.
+        </Text>
+        <TouchableOpacity
+          onPress={onFollowTeams}
+          style={{
+            backgroundColor: '#fff', paddingHorizontal: 28, paddingVertical: 14,
+            borderRadius: 24,
+          }}
+        >
+          <Text style={{ color: '#000', fontSize: 15, fontWeight: '700' }}>Choose Teams</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 }}>
+      <View style={{
+        width: 72, height: 72, borderRadius: 36,
+        backgroundColor: '#1E1E1E', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 20,
+      }}>
+        <Ionicons name="checkmark-circle-outline" size={36} color="#444" />
+      </View>
+      <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 10 }}>
+        You're all caught up
+      </Text>
+      <Text style={{ color: '#666', fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
+        No new episodes from your teams yet. Pull down to refresh.
+      </Text>
     </View>
   );
 }
@@ -365,10 +843,25 @@ export default function HomeScreen({ onNavigate }: {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const teamSlugs = profile?.topic_slugs || [];
+  const teamSlugs = useMemo(() => profile?.topic_slugs || [], [profile]);
+
   const { data: teams } = useTeamsBySlug(teamSlugs);
   const { data: userTeams = [] } = useUserTeams();
+  const { data: episodes = [], isLoading: feedLoading } = useRecentTeamEpisodes(teamSlugs);
+
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
+  const [commentsEpisode, setCommentsEpisode] = useState<RecentEpisode | null>(null);
+  const [commentsColor, setCommentsColor] = useState('#333');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // team slug → primary color
+  const teamColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const team of userTeams) {
+      if (team.primary_color) map[team.slug] = team.primary_color;
+    }
+    return map;
+  }, [userTeams]);
 
   const handleSaveTeams = async (slugs: string[]) => {
     if (!user) return;
@@ -377,10 +870,38 @@ export default function HomeScreen({ onNavigate }: {
     setTeamPickerOpen(false);
   };
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['recent-team-episodes'] });
+    await queryClient.invalidateQueries({ queryKey: ['recent-games'] });
+    setRefreshing(false);
+  }, [queryClient]);
+
+  const handleOpenComments = useCallback((episode: RecentEpisode, color: string) => {
+    setCommentsEpisode(episode);
+    setCommentsColor(color);
+  }, []);
+
+  const renderPost = useCallback(({ item }: { item: RecentEpisode }) => {
+    const teamColor = teamColorMap[item.team_slug || ''] || '#1E2A3A';
+    return (
+      <EpisodeFeedPost
+        episode={item}
+        teamColor={teamColor}
+        onOpenComments={handleOpenComments}
+        onNavigate={onNavigate}
+      />
+    );
+  }, [teamColorMap, handleOpenComments, onNavigate]);
+
+  const ListHeader = useMemo(() => (
+    <CompactScoreboard teamSlugs={teamSlugs} />
+  ), [teamSlugs]);
+
   if (profileLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color="#fff" />
       </View>
     );
   }
@@ -394,25 +915,32 @@ export default function HomeScreen({ onNavigate }: {
         onSave={handleSaveTeams}
       />
 
-      {/* Sticky top filter bar */}
+      <CommentsSheet
+        episode={commentsEpisode}
+        teamColor={commentsColor}
+        visible={!!commentsEpisode}
+        onClose={() => setCommentsEpisode(null)}
+      />
+
+      {/* ── Sticky team picker ── */}
       <View style={{
-        paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
+        paddingTop: 56, paddingBottom: 10, paddingHorizontal: 16,
         flexDirection: 'row', alignItems: 'center', gap: 12,
         backgroundColor: '#121212',
+        borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
       }}>
-        {/* Filter icon */}
         <TouchableOpacity
           onPress={() => setTeamPickerOpen(true)}
           style={{
             width: 42, height: 42, borderRadius: 12,
-            backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
-          }}>
+            backgroundColor: '#1E1E1E',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
           <Ionicons name="options-outline" size={20} color="#fff" />
         </TouchableOpacity>
 
-        {/* Team circles */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
           {(teams || []).map((team) => (
             <TouchableOpacity
               key={team.id}
@@ -422,13 +950,13 @@ export default function HomeScreen({ onNavigate }: {
                 backgroundColor: '#fff', overflow: 'hidden',
                 borderWidth: 3, borderColor: team.primary_color || '#333',
                 alignItems: 'center', justifyContent: 'center',
-              }}>
+              }}
+            >
               {team.logo_url ? (
-                <Image source={{ uri: team.logo_url }}
-                  style={{ width: 36, height: 36 }} contentFit="contain" />
+                <Image source={{ uri: team.logo_url }} style={{ width: 36, height: 36 }} contentFit="contain" />
               ) : (
-                <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 12 }}>
-                  {team.short_name?.slice(0, 2)}
+                <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 11 }}>
+                  {team.short_name?.slice(0, 3)}
                 </Text>
               )}
             </TouchableOpacity>
@@ -436,35 +964,30 @@ export default function HomeScreen({ onNavigate }: {
         </ScrollView>
       </View>
 
-      {/* Scrollable content */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        {/* New Episodes carousel */}
-        <View style={{ marginTop: 8 }}>
-          <NewEpisodesCarousel teamSlugs={teamSlugs} teams={teams || []} onNavigate={onNavigate} />
-        </View>
-
-        {/* Scoreboard */}
-        <ScoreboardSection
-          teamSlugs={teamSlugs}
-          onNavigate={onNavigate}
-        />
-
-        {/* Your Players */}
-        <FromPlayersYouFollowShelf onNavigate={onNavigate} />
-
-        {/* Who's Buzzing */}
-        <WhoBuzzingShelf teamSlugs={teamSlugs} onNavigate={onNavigate} />
-
-        {/* Show Discovery */}
-        <ShowDiscoverySections
-          userTeams={userTeams}
-          followedShowIds={[]}
-          onNavigate={onNavigate}
-        />
-
-        {/* Footer */}
-        <HomeFooter />
-      </ScrollView>
+      {/* ── Social feed ── */}
+      <FlatList
+        data={episodes}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPost}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          feedLoading
+            ? <ActivityIndicator color="#fff" style={{ marginTop: 60 }} />
+            : <FeedEmpty hasTeams={teamSlugs.length > 0} onFollowTeams={() => setTeamPickerOpen(true)} />
+        }
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews
+        windowSize={8}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#fff"
+            colors={['#fff']}
+          />
+        }
+      />
     </View>
   );
 }

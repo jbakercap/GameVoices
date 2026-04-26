@@ -14,6 +14,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useBrowseGameStories, GameStory } from '../hooks/queries/useBrowseGameStories';
 import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows';
 import { useBrowsePopularEpisodes, PopularEpisode } from '../hooks/queries/useBrowsePopularEpisodes';
+import { useUserTeams } from '../hooks/useUserTeams';
+import { FromPlayersYouFollowShelf } from '../components/FromPlayersYouFollowShelf';
+import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -385,6 +388,7 @@ export default function BrowseScreen() {
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: allTeams } = useAllTeams();
   const { data: profile } = useProfile();
+  const { data: userTeams = [] } = useUserTeams();
   const { data: followedShowIds = [], refetch: refetchShows } = useFollowedShows();
   const queryClient = useQueryClient();
 
@@ -539,6 +543,16 @@ export default function BrowseScreen() {
                 </ScrollView>
               )}
             </View>
+
+            {/* Your Players */}
+            <FromPlayersYouFollowShelf onNavigate={(screen, params) => navigation.navigate(screen, params)} />
+
+            {/* More from your teams */}
+            <ShowDiscoverySections
+              userTeams={userTeams}
+              followedShowIds={followedShowIds}
+              onNavigate={(screen, params) => navigation.navigate(screen, params)}
+            />
 
             {/* Scoreboard */}
             {(loadingScoreboard || gameStories.length > 0) && (
