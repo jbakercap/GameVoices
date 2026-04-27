@@ -41,16 +41,6 @@ interface EpisodeResult {
   matchSource: string;
 }
 
-interface PlayerResult {
-  id: string;
-  name: string;
-  slug: string;
-  headshot_url: string | null;
-  position: string | null;
-  team_name?: string;
-  team_primary_color?: string;
-}
-
 interface StoryResult {
   id: string;
   headline: string;
@@ -76,7 +66,7 @@ interface RelatedTags {
   topics: string[];
 }
 
-type TabType = 'all' | 'shows' | 'episodes' | 'players' | 'stories';
+type TabType = 'all' | 'shows' | 'episodes' | 'stories';
 
 const STORY_TYPE_COLORS: Record<string, string> = {
   game_result: '#4CAF50',
@@ -177,35 +167,6 @@ function useSearchSuggestions(query: string) {
     },
     enabled: query.trim().length >= 2,
     staleTime: 60 * 1000,
-  });
-}
-
-function useSearchPlayers(query: string) {
-  return useQuery({
-    queryKey: ['search-players', query],
-    queryFn: async (): Promise<PlayerResult[]> => {
-      const { data: players, error } = await supabase
-        .from('players')
-        .select('id, name, slug, headshot_url, position, team_slug')
-        .ilike('name', `%${query}%`)
-        .neq('status', 'inactive')
-        .limit(10);
-      if (error || !players) return [];
-      const teamSlugs = [...new Set(players.map((p: any) => p.team_slug).filter(Boolean))] as string[];
-      let teamsMap: Record<string, any> = {};
-      if (teamSlugs.length > 0) {
-        const { data: teams } = await supabase
-          .from('teams').select('slug, name, primary_color').in('slug', teamSlugs);
-        if (teams) teamsMap = Object.fromEntries(teams.map((t: any) => [t.slug, t]));
-      }
-      return players.map((p: any) => ({
-        id: p.id, name: p.name, slug: p.slug,
-        headshot_url: p.headshot_url, position: p.position,
-        team_name: p.team_slug ? teamsMap[p.team_slug]?.name : undefined,
-        team_primary_color: p.team_slug ? teamsMap[p.team_slug]?.primary_color : undefined,
-      }));
-    },
-    enabled: query.trim().length >= 2,
   });
 }
 
@@ -351,37 +312,6 @@ function EpisodeRow({
   );
 }
 
-function PlayerRow({ player, onNavigate }: { player: PlayerResult; onNavigate?: (screen: string, params: any) => void }) {
-  const borderColor = player.team_primary_color || '#444';
-  return (
-    <TouchableOpacity
-      onPress={() => onNavigate?.('PlayerDetail', { playerSlug: player.slug })}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12,
-        paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#1A1A1A',
-        marginHorizontal: 16, marginBottom: 8, borderRadius: 12 }}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
-        backgroundColor: '#2A2A2A', borderWidth: 2, borderColor }}>
-        {player.headshot_url ? (
-          <Image source={{ uri: player.headshot_url }} style={{ width: 44, height: 44 }} contentFit="cover" />
-        ) : (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#888', fontSize: 13, fontWeight: 'bold' }}>
-              {player.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-            </Text>
-          </View>
-        )}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{player.name}</Text>
-        <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-          {[player.position, player.team_name].filter(Boolean).join(' · ')}
-        </Text>
-      </View>
-      <Text style={{ color: '#555', fontSize: 16 }}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
 function TeamRow({ team, onNavigate }: { team: TeamResult; onNavigate?: (screen: string, params: any) => void }) {
   return (
     <TouchableOpacity
@@ -437,13 +367,12 @@ function StoryRow({ story, onNavigate }: { story: StoryResult; onNavigate?: (scr
 function TabBar({ activeTab, onSelect, counts }: {
   activeTab: TabType;
   onSelect: (tab: TabType) => void;
-  counts: { all: number; shows: number; episodes: number; players: number; stories: number };
+  counts: { all: number; shows: number; episodes: number; stories: number };
 }) {
   const tabs: { key: TabType; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: counts.all },
     { key: 'shows', label: 'Shows', count: counts.shows },
     { key: 'episodes', label: 'Episodes', count: counts.episodes },
-    { key: 'players', label: 'Players', count: counts.players },
     { key: 'stories', label: 'Takes', count: counts.stories },
   ].filter(t => t.key === 'all' || t.count > 0) as { key: TabType; label: string; count: number }[];
 
@@ -481,7 +410,6 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
   const isSearching = trimmed.length >= 2;
 
   const { data: searchData, isLoading: searchLoading } = useSearchData(trimmed, episodeLimit);
-  const { data: players = [] } = useSearchPlayers(trimmed);
   const { data: teams = [] } = useSearchTeams(trimmed);
   const { data: stories = [] } = useSearchStories(trimmed);
   const { data: suggestions = [] } = useSearchSuggestions(trimmed);
@@ -513,10 +441,9 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
   }, [relatedTags]);
 
   const counts = {
-    all: shows.length + episodes.length + players.length + teams.length + stories.length,
+    all: shows.length + episodes.length + teams.length + stories.length,
     shows: shows.length,
     episodes: episodes.length,
-    players: players.length,
     stories: stories.length,
   };
 
@@ -547,7 +474,7 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
           <TextInput
             value={query}
             onChangeText={text => { setQuery(text); setEpisodeLimit(EPISODES_PER_PAGE); }}
-            placeholder="Shows, episodes, players, teams..."
+            placeholder="Shows, episodes, teams..."
             placeholderTextColor="#555"
             style={{ flex: 1, color: '#fff', fontSize: 16 }}
             autoCapitalize="none"
@@ -568,7 +495,7 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
           <Text style={{ fontSize: 40, marginBottom: 12 }}>🎙</Text>
           <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Search GameVoices</Text>
           <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
-            Find shows, episodes, players, teams, and stories
+            Find shows, episodes, teams, and stories
           </Text>
         </View>
       ) : isLoading ? (
@@ -638,15 +565,6 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
                 <SectionHeader title="Teams" />
                 {teams.map(team => (
                   <TeamRow key={team.id} team={team} onNavigate={onNavigate} />
-                ))}
-              </View>
-            )}
-
-            {(activeTab === 'all' || activeTab === 'players') && players.length > 0 && (
-              <View style={{ marginBottom: 16 }}>
-                <SectionHeader title="Players" />
-                {(activeTab === 'all' ? players.slice(0, 3) : players).map(player => (
-                  <PlayerRow key={player.id} player={player} onNavigate={onNavigate} />
                 ))}
               </View>
             )}

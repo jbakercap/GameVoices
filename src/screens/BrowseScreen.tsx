@@ -15,7 +15,6 @@ import { useBrowseGameStories, GameStory } from '../hooks/queries/useBrowseGameS
 import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows';
 import { useBrowsePopularEpisodes, PopularEpisode } from '../hooks/queries/useBrowsePopularEpisodes';
 import { useUserTeams } from '../hooks/useUserTeams';
-import { FromPlayersYouFollowShelf } from '../components/FromPlayersYouFollowShelf';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
@@ -543,9 +542,6 @@ export default function BrowseScreen() {
                 </ScrollView>
               )}
             </View>
-
-            {/* Your Players */}
-            <FromPlayersYouFollowShelf onNavigate={(screen, params) => navigation.navigate(screen, params)} />
 
             {/* More from your teams */}
             <ShowDiscoverySections

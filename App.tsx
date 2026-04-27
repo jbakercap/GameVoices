@@ -9,6 +9,7 @@ import { View, Text, Modal } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
+import { navigationRef } from './src/lib/navigationRef';
 import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
 import MiniPlayer from './src/components/MiniPlayer';
 import FullPlayerScreen from './src/screens/FullPlayerScreen';
@@ -17,19 +18,15 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import SearchScreen from './src/screens/SearchScreen';
-import RosterScreen from './src/screens/RosterScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import WatchScreen from './src/screens/WatchScreen';
 import StoryDetailScreen from './src/screens/StoryDetailScreen';
-import PlayerDetailScreen from './src/screens/PlayerDetailScreen';
 import ShowScreen from './src/screens/ShowScreen';
 import EpisodeScreen from './src/screens/EpisodeScreen';
 import TeamScreen from './src/screens/TeamScreen';
-import PersonScreen from './src/screens/PersonScreen';
 import PlaylistScreen from './src/screens/PlaylistScreen';
 import SubmitShowScreen from './src/screens/SubmitShowScreen';
-import TrendingScreen from './src/screens/TrendingScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -74,20 +71,16 @@ function MainApp() {
   const { isFullPlayerOpen, openFullPlayer, closeFullPlayer } = usePlayer();
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={TabNavigator} />
         <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
-        <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
         <Stack.Screen name="ShowDetail" component={ShowScreen} />
         <Stack.Screen name="EpisodeDetail" component={EpisodeScreen} />
         <Stack.Screen name="TeamDetail" component={TeamScreen} />
-        <Stack.Screen name="PersonDetail" component={PersonScreen} />
         <Stack.Screen name="PlaylistDetail" component={PlaylistScreen} />
         <Stack.Screen name="SubmitShow" component={SubmitShowScreen} />
-        <Stack.Screen name="Trending" component={TrendingScreen} />
         <Stack.Screen name="LibraryDetail" component={LibraryScreen} />
-        <Stack.Screen name="MyRoster" component={RosterScreen} />
       </Stack.Navigator>
       <MiniPlayer onPress={openFullPlayer} />
       <Modal

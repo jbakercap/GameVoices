@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { navigate } from '../lib/navigationRef';
 
 // Show alerts even when app is in foreground
 Notifications.setNotificationHandler({
@@ -71,8 +72,10 @@ export function usePushNotifications() {
 
     // Handle notification tapped while app is backgrounded/closed
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      // Future: navigate to the relevant comment thread
-      console.log('Notification tapped:', response.notification.request.content);
+      const data = response.notification.request.content.data as Record<string, any>;
+      if (data?.episodeId) {
+        navigate('EpisodeDetail', { episodeId: data.episodeId });
+      }
     });
 
     return () => sub.remove();

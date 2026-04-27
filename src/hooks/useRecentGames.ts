@@ -26,15 +26,8 @@ export interface GameWithTeams {
   episode_count?: number;
 }
 
-const LEAGUE_HOURS: Record<string, number> = {
-  mlb: 36,
-  nba: 48,
-  nfl: 144,
-  nhl: 48,
-  wnba: 48,
-};
-const DEFAULT_HOURS = 48;
-const MAX_DAYS = 7;
+const MAX_DAYS = 14;
+const MAX_GAMES_PER_TEAM = 3;
 
 export function useRecentGames(teamSlugs: string[]) {
   return useQuery({
@@ -42,7 +35,7 @@ export function useRecentGames(teamSlugs: string[]) {
     queryFn: async (): Promise<GameWithTeams[]> => {
       if (teamSlugs.length === 0) return [];
 
-      const sevenDaysAgo = new Date(Date.now() - MAX_DAYS * 24 * 60 * 60 * 1000)
+      const cutoffDate = new Date(Date.now() - MAX_DAYS * 24 * 60 * 60 * 1000)
         .toISOString()
         .split('T')[0];
 
@@ -51,7 +44,7 @@ export function useRecentGames(teamSlugs: string[]) {
         .select('id, league, home_team_slug, away_team_slug, home_score, away_score, event_date, game_time, status')
         .eq('status', 'final')
         .or(`home_team_slug.in.(${teamSlugs.join(',')}),away_team_slug.in.(${teamSlugs.join(',')})`)
-        .gte('event_date', sevenDaysAgo)
+        .gte('event_date', cutoffDate)
         .order('event_date', { ascending: false })
         .limit(30);
 
@@ -60,22 +53,9 @@ export function useRecentGames(teamSlugs: string[]) {
       const games = gamesData || [];
       if (games.length === 0) return [];
 
-      // Filter by league-specific time window
-      const now = Date.now();
-      const filteredGames = games.filter(g => {
-        const hours = LEAGUE_HOURS[g.league] ?? DEFAULT_HOURS;
-        const cutoff = now - hours * 60 * 60 * 1000;
-        const gameMs = g.game_time
-          ? new Date(g.game_time).getTime()
-          : new Date(g.event_date).getTime();
-        return gameMs >= cutoff;
-      });
-
-      if (filteredGames.length === 0) return [];
-
       // Collect all team slugs to fetch in one query
       const allSlugs = new Set<string>();
-      for (const g of filteredGames) {
+      for (const g of games) {
         allSlugs.add(g.home_team_slug);
         allSlugs.add(g.away_team_slug);
       }
@@ -91,7 +71,7 @@ export function useRecentGames(teamSlugs: string[]) {
       }
 
       // Fetch linked stories (for "Play All Takes" button)
-      const gameIds = filteredGames.map(g => g.id);
+      const gameIds = games.map(g => g.id);
       const { data: storiesData } = await supabase
         .from('stories')
         .select('id, game_id, episode_count')
@@ -104,17 +84,23 @@ export function useRecentGames(teamSlugs: string[]) {
         if (s.game_id) storyByGameId[s.game_id] = { id: s.id, episode_count: s.episode_count };
       }
 
-      // Deduplicate games (if user follows both teams, show once)
+      // Deduplicate and cap at MAX_GAMES_PER_TEAM per followed team slug
       const seen = new Set<string>();
+      const perTeamCount: Record<string, number> = {};
       const result: GameWithTeams[] = [];
-      for (const g of filteredGames) {
-        if (seen.has(g.id)) continue;
-        seen.add(g.id);
 
-        // Put user's followed team on the left; prefer home team if both are followed
+      for (const g of games) {
+        if (seen.has(g.id)) continue;
+
         const followedTeamSlug = teamSlugs.includes(g.home_team_slug)
           ? g.home_team_slug
           : g.away_team_slug;
+
+        const count = perTeamCount[followedTeamSlug] ?? 0;
+        if (count >= MAX_GAMES_PER_TEAM) continue;
+
+        seen.add(g.id);
+        perTeamCount[followedTeamSlug] = count + 1;
 
         const story = storyByGameId[g.id];
         result.push({

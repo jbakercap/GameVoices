@@ -334,8 +334,7 @@ export default function ProfileScreen() {
         {/* Locker items */}
         <View style={{ paddingHorizontal: 16 }}>
           <LockerRow icon="radio-outline" label="Shows" onPress={() => goToLibrary('shows')} />
-          <LockerRow icon="people-outline" label="Followed Players" onPress={() => navigation.navigate('MyRoster')} />
-          <LockerRow icon="bookmark-outline" label="Saved Episodes" onPress={() => goToLibrary('saved')} />
+<LockerRow icon="bookmark-outline" label="Saved Episodes" onPress={() => goToLibrary('saved')} />
           <LockerRow icon="heart-outline" label="Saved Takes" onPress={() => goToLibrary('stories')} />
           <LockerRow icon="sparkles-outline" label="Saved Moments" onPress={() => goToLibrary('moments')} />
           <LockerRow icon="list-outline" label="Playlists" onPress={() => goToLibrary('playlists')} />
