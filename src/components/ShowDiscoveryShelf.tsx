@@ -62,6 +62,8 @@ export function ShowDiscoveryShelf({ title, shows, accentColor, onNavigate, maxI
                   source={{ uri: show.artwork_url }}
                   style={{ width: 110, height: 110 }}
                   contentFit="cover"
+                  accessible={false}
+                  pointerEvents="none"
                 />
               ) : (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

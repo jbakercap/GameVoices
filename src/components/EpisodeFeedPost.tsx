@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
+import { navigate } from '../lib/navigationRef';
 import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
 import { useSaveEpisode } from '../hooks/mutations/useSaveEpisode';
 import { useEpisodeLikes, useIsEpisodeLiked } from '../hooks/queries/useEpisodeLikes';
@@ -211,17 +212,19 @@ function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }:
       flexDirection: 'row', alignItems: 'flex-start', gap: 10,
       paddingLeft: isReply ? 52 : 16, paddingRight: 16, paddingVertical: 10,
     }}>
-      <View style={{
-        width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2,
-        backgroundColor: '#2A2A2A', overflow: 'hidden',
-        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
+      <TouchableOpacity
+        onPress={() => comment.user_id && navigate('PublicProfile', { userId: comment.user_id })}
+        style={{
+          width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2,
+          backgroundColor: '#2A2A2A', overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
         {comment.profile?.avatar_url ? (
-          <Image source={{ uri: comment.profile.avatar_url }} style={{ width: avatarSize, height: avatarSize }} contentFit="cover" />
+          <Image source={{ uri: comment.profile.avatar_url }} style={{ width: avatarSize, height: avatarSize }} contentFit="cover" accessible={false} />
         ) : (
           <Text style={{ color: '#fff', fontSize: isReply ? 11 : 14, fontWeight: '700' }}>{initial}</Text>
         )}
-      </View>
+      </TouchableOpacity>
 
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
@@ -532,31 +535,15 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
         <TouchableOpacity
           onPress={() => onNavigate?.('ShowDetail', { showId: episode.show_id })}
-          style={{ marginRight: 12 }}
+          style={{ flex: 1 }}
         >
-          <View style={{
-            width: 44, height: 44, borderRadius: 12,
-            backgroundColor: teamColor, overflow: 'hidden',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {episode.show_artwork_url ? (
-              <Image source={{ uri: episode.show_artwork_url }} style={{ width: 44, height: 44 }} contentFit="cover" />
-            ) : (
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>
-                {(episode.show_title || 'S').charAt(0).toUpperCase()}
-              </Text>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }}>
           <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>
             {episode.show_title || 'Unknown Show'}
           </Text>
           <Text style={{ color: '#555', fontSize: 12, marginTop: 2 }}>
             {teamShortName ? `${teamShortName} · ` : ''}{timeAgo(episode.published_at)}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => setMenuOpen(true)}

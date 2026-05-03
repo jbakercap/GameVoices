@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePlayer } from '../contexts/PlayerContext';
 import { supabase } from '../lib/supabase';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { navigate } from '../lib/navigationRef';
 import { useBrowseGameStories, GameStory } from '../hooks/queries/useBrowseGameStories';
 import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows';
 import { useBrowsePopularEpisodes, PopularEpisode } from '../hooks/queries/useBrowsePopularEpisodes';
@@ -128,31 +128,18 @@ function LeaguePill({ label, selected, onPress }: {
   );
 }
 
-function ShowCard({ show, isFollowing, onToggle }: {
-  show: any; isFollowing: boolean; onToggle: () => void;
-}) {
+function ShowCard({ show }: { show: any }) {
   return (
-    <TouchableOpacity onPress={onToggle} style={{ width: 110, marginRight: 12 }}>
+    <TouchableOpacity onPress={() => navigate('ShowDetail', { showId: show.id })} style={{ width: 110, marginRight: 12 }}>
       <View style={{
         width: 110, height: 110, borderRadius: 12,
         backgroundColor: '#2A2A2A', overflow: 'hidden', marginBottom: 6,
-        borderWidth: isFollowing ? 2 : 0,
-        borderColor: '#FFFFFF',
       }}>
         {show.artwork_url ? (
-          <Image source={{ uri: show.artwork_url }} style={{ width: 110, height: 110 }} contentFit="cover" />
+          <Image source={{ uri: show.artwork_url }} style={{ width: 110, height: 110 }} contentFit="cover" accessible={false} pointerEvents="none" />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 32 }}>🎙</Text>
-          </View>
-        )}
-        {isFollowing && (
-          <View style={{
-            position: 'absolute', top: 6, right: 6,
-            width: 20, height: 20, borderRadius: 10,
-            backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Text style={{ color: '#000', fontSize: 11, fontWeight: 'bold' }}>✓</Text>
           </View>
         )}
       </View>
@@ -235,14 +222,13 @@ function TeamGrid({ teams, followedSlugs, onToggle }: {
 }
 
 function ScoreboardCard({ story }: { story: GameStory }) {
-  const navigation = useNavigation<any>();
   const hasScore = story.home_score !== null && story.away_score !== null;
   const homeWon = hasScore && story.home_score! > story.away_score!;
   const awayWon = hasScore && story.away_score! > story.home_score!;
 
   return (
     <TouchableOpacity
-      onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
+      onPress={() => navigate('StoryDetail', { storyId: story.id })}
       style={{
         width: 170, marginRight: 12,
         backgroundColor: '#1A1A1A', borderRadius: 12,
@@ -381,7 +367,6 @@ function PopularEpisodeRow({ episode }: { episode: PopularEpisode }) {
 
 export default function BrowseScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<any>();
   const [selectedLeague, setSelectedLeague] = useState('all');
 
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
@@ -441,18 +426,6 @@ export default function BrowseScreen() {
     queryClient.invalidateQueries({ queryKey: ['profile'] });
   };
 
-  const handleShowToggle = async (showId: string) => {
-    if (!user) return;
-    const isFollowing = followedShowIds.includes(showId);
-    if (isFollowing) {
-      await supabase.from('user_library')
-        .delete().eq('user_id', user.id).eq('show_id', showId).eq('item_type', 'follow');
-    } else {
-      await supabase.from('user_library')
-        .insert({ user_id: user.id, show_id: showId, item_type: 'follow' });
-    }
-    refetchShows();
-  };
 
   if (leaguesLoading) {
     return (
@@ -503,8 +476,6 @@ export default function BrowseScreen() {
               {(nationalShows || []).map((show: any) => (
                 <ShowCard
                   key={show.id} show={show}
-                  isFollowing={followedShowIds.includes(show.id)}
-                  onToggle={() => handleShowToggle(show.id)}
                 />
               ))}
             </SectionShelf>
@@ -547,7 +518,7 @@ export default function BrowseScreen() {
             <ShowDiscoverySections
               userTeams={userTeams}
               followedShowIds={followedShowIds}
-              onNavigate={(screen, params) => navigation.navigate(screen, params)}
+              onNavigate={(screen, params) => navigate(screen, params)}
             />
 
             {/* Scoreboard */}
@@ -568,8 +539,6 @@ export default function BrowseScreen() {
                 {regionalShows.map((show: any) => (
                   <ShowCard
                     key={show.id} show={show}
-                    isFollowing={followedShowIds.includes(show.id)}
-                    onToggle={() => handleShowToggle(show.id)}
                   />
                 ))}
               </SectionShelf>
@@ -620,8 +589,6 @@ export default function BrowseScreen() {
               {(leagueShows || []).map((show: any) => (
                 <ShowCard
                   key={show.id} show={show}
-                  isFollowing={followedShowIds.includes(show.id)}
-                  onToggle={() => handleShowToggle(show.id)}
                 />
               ))}
             </SectionShelf>
@@ -635,8 +602,6 @@ export default function BrowseScreen() {
                 {(nationalShows || []).map((show: any) => (
                   <ShowCard
                     key={show.id} show={show}
-                    isFollowing={followedShowIds.includes(show.id)}
-                    onToggle={() => handleShowToggle(show.id)}
                   />
                 ))}
               </SectionShelf>
@@ -657,8 +622,6 @@ export default function BrowseScreen() {
                 {regionalShows.map((show: any) => (
                   <ShowCard
                     key={show.id} show={show}
-                    isFollowing={followedShowIds.includes(show.id)}
-                    onToggle={() => handleShowToggle(show.id)}
                   />
                 ))}
               </SectionShelf>

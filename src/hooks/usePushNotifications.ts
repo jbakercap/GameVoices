@@ -73,7 +73,9 @@ export function usePushNotifications() {
     // Handle notification tapped while app is backgrounded/closed
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, any>;
-      if (data?.episodeId) {
+      if (data?.type === 'friend_request' && data?.actorId) {
+        navigate('PublicProfile', { userId: data.actorId });
+      } else if (data?.episodeId) {
         navigate('EpisodeDetail', { episodeId: data.episodeId });
       }
     });

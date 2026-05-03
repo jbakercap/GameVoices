@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, FlatList,
+  TextInput, ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -274,12 +274,6 @@ export default function ProfileScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [userTeams, setUserTeams] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (profile?.topic_slugs) setUserTeams(profile.topic_slugs);
-  }, [profile]);
-
   const handleSignOut = () => {
     setSettingsOpen(false);
     setTimeout(() => {
@@ -295,7 +289,6 @@ export default function ProfileScreen() {
     const { error } = await supabase.from('profiles')
       .update({ topic_slugs: teams }).eq('user_id', user.id);
     if (!error) {
-      setUserTeams(teams);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       setTeamPickerOpen(false);
     } else {
@@ -349,7 +342,7 @@ export default function ProfileScreen() {
         onClose={() => setSettingsOpen(false)}
         profile={profile}
         user={user}
-        userTeams={userTeams}
+        userTeams={profile?.topic_slugs ?? []}
         onEditProfile={() => setEditProfileOpen(true)}
         onEditTeams={() => setTeamPickerOpen(true)}
         onSignOut={handleSignOut}
@@ -358,7 +351,7 @@ export default function ProfileScreen() {
       <TeamPickerModal
         visible={teamPickerOpen}
         onClose={() => setTeamPickerOpen(false)}
-        selectedTeams={userTeams}
+        selectedTeams={profile?.topic_slugs ?? []}
         onSave={handleSaveTeams}
       />
       {user && (
