@@ -22,13 +22,14 @@ import SearchScreen from './src/screens/SearchScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import WatchScreen from './src/screens/WatchScreen';
 import StoryDetailScreen from './src/screens/StoryDetailScreen';
-import ShowScreen from './src/screens/ShowScreen';
+
 import EpisodeScreen from './src/screens/EpisodeScreen';
 import TeamScreen from './src/screens/TeamScreen';
 import PlaylistScreen from './src/screens/PlaylistScreen';
 import SubmitShowScreen from './src/screens/SubmitShowScreen';
 import PublicProfileScreen from './src/screens/PublicProfileScreen';
 import FriendsScreen from './src/screens/FriendsScreen';
+import CreatorProfileScreen from './src/screens/CreatorProfileScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -109,7 +110,7 @@ function MainApp() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={TabNavigator} />
         <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
-        <Stack.Screen name="ShowDetail" component={ShowScreen} />
+        <Stack.Screen name="ShowDetail" component={CreatorProfileScreen} />
         <Stack.Screen name="EpisodeDetail" component={EpisodeScreen} />
         <Stack.Screen name="TeamDetail" component={TeamScreen} />
         <Stack.Screen name="PlaylistDetail" component={PlaylistScreen} />

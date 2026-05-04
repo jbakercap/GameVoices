@@ -14,6 +14,28 @@ import { useIsEpisodeSaved } from '../hooks/queries/useUserLibrary';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDurationHuman, formatRelativeDate } from '../lib/formatters';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+
+function useShowHosts(showId: string | undefined) {
+  return useQuery({
+    queryKey: ['showHosts', showId],
+    queryFn: async () => {
+      if (!showId) return [];
+      const { data } = await supabase
+        .from('show_hosts')
+        .select('speaker_id, speakers(id, full_name, photo_url)')
+        .eq('show_id', showId);
+      return (data || []).map((row: any) => ({
+        id: row.speakers?.id as string,
+        full_name: row.speakers?.full_name as string,
+        photo_url: row.speakers?.photo_url as string | null,
+      })).filter(h => h.id && h.full_name);
+    },
+    enabled: !!showId,
+    staleTime: 10 * 60 * 1000,
+  });
+}
 
 function EpisodeRow({ episode, showArtwork, teamColor, onNavigate }: {
   episode: any;
@@ -111,6 +133,7 @@ export default function ShowScreen() {
   const { data: show, isLoading } = useShow(showId);
   const isFollowed = useIsShowFollowed(showId);
   const followShow = useFollowShow();
+  const { data: hosts = [] } = useShowHosts(showId);
 
   const handleFollow = () => {
     if (!user) {
@@ -138,8 +161,6 @@ export default function ShowScreen() {
       </View>
     );
   }
-
-  const hosts = Array.isArray(show.hosts_json) ? show.hosts_json : [];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
@@ -207,10 +228,14 @@ export default function ShowScreen() {
           {/* Hosts */}
           {hosts.length > 0 && (
             <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {hosts.slice(0, 3).map((host: any, i: number) => (
-                <View key={i} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: '#1E1E1E' }}>
-                  <Text style={{ color: '#aaa', fontSize: 13 }}>🎙 {host.name || host}</Text>
-                </View>
+              {hosts.map((host) => (
+                <TouchableOpacity
+                  key={host.id}
+                  onPress={() => navigation.navigate('PersonDetail', { speakerId: host.id })}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: '#1E1E1E' }}
+                >
+                  <Text style={{ color: '#aaa', fontSize: 13 }}>🎙 {host.full_name}</Text>
+                </TouchableOpacity>
               ))}
             </View>
           )}
