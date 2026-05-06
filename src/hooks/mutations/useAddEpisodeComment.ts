@@ -12,11 +12,13 @@ export function useAddEpisodeComment() {
       content,
       parentId,
       parentCommentUserId,
+      timestampSeconds,  // NOTE: requires timestamp_seconds column on episode_comments table in Supabase
     }: {
       episodeId: string;
       content: string;
       parentId?: string;
       parentCommentUserId?: string;
+      timestampSeconds?: number;
     }) => {
       if (!user) throw new Error('Must be logged in');
 
@@ -27,6 +29,7 @@ export function useAddEpisodeComment() {
           user_id: user.id,
           content: content.trim(),
           parent_id: parentId ?? null,
+          ...(timestampSeconds != null ? { timestamp_seconds: Math.floor(timestampSeconds) } : {}),
         })
         .select('id')
         .single();

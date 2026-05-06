@@ -37,6 +37,8 @@ interface PlayerContextValue {
   setSleepTimer: (minutes: number | null) => void;
   sleepTimerSecondsLeft: number | null;
   dismissPlayer: () => Promise<void>;
+  miniPlayerVisible: boolean;
+  setMiniPlayerVisible: (visible: boolean) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -77,6 +79,7 @@ async function setupPlayer() {
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+  const [miniPlayerVisible, setMiniPlayerVisible] = useState(true);
   const [sleepTimerEndTime, setSleepTimerEndTime] = useState<number | null>(null);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
   const [sleepTimerSecondsLeft, setSleepTimerSecondsLeft] = useState<number | null>(null);
@@ -213,6 +216,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setSleepTimer,
       sleepTimerSecondsLeft,
       dismissPlayer,
+      miniPlayerVisible,
+      setMiniPlayerVisible,
     }}>
       {children}
     </PlayerContext.Provider>

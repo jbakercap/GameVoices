@@ -26,7 +26,7 @@ export interface GameWithTeams {
   episode_count?: number;
 }
 
-const MAX_DAYS = 14;
+const MAX_DAYS = 7;
 const MAX_GAMES_PER_TEAM = 3;
 
 export function useRecentGames(teamSlugs: string[]) {

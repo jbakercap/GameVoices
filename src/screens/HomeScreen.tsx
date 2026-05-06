@@ -15,7 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { CompactScoreboard } from '../components/CompactScoreboard';
-import { EpisodeFeedPost, CommentsSheet, FeedEpisode, timeAgo } from '../components/EpisodeFeedPost';
+import { EpisodeFeedPost, FeedEpisode, timeAgo } from '../components/EpisodeFeedPost';
 import { useNotifications, useUnreadNotificationCount, AppNotification } from '../hooks/queries/useNotifications';
 import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotificationsRead';
 
@@ -171,8 +171,6 @@ export default function HomeScreen({ onNavigate }: {
   const { data: rawEpisodes = [], isLoading: feedLoading } = useRecentTeamEpisodes(teamSlugs);
 
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
-  const [commentsEpisode, setCommentsEpisode] = useState<FeedEpisode | null>(null);
-  const [commentsColor, setCommentsColor] = useState('#333');
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -227,11 +225,6 @@ export default function HomeScreen({ onNavigate }: {
     setRefreshing(false);
   }, [queryClient]);
 
-  const handleOpenComments = useCallback((episode: FeedEpisode, color: string) => {
-    setCommentsEpisode(episode);
-    setCommentsColor(color);
-  }, []);
-
   const renderPost = useCallback(({ item }: { item: FeedEpisode }) => {
     const teamColor = teamColorMap[item.team_slug || ''] || '#1E2A3A';
     const teamShortName = teamNameMap[item.team_slug || ''];
@@ -240,13 +233,13 @@ export default function HomeScreen({ onNavigate }: {
         episode={item}
         teamColor={teamColor}
         teamShortName={teamShortName}
-        onOpenComments={handleOpenComments}
+        onOpenComments={() => {}}
         onNavigate={onNavigate}
       />
     );
-  }, [teamColorMap, teamNameMap, handleOpenComments, onNavigate]);
+  }, [teamColorMap, teamNameMap, onNavigate]);
 
-  const ListHeader = useMemo(() => <CompactScoreboard teamSlugs={teamSlugs} />, [teamSlugs]);
+  const ListHeader = useMemo(() => <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />, [teamSlugs, onNavigate]);
 
   if (profileLoading) {
     return (
@@ -263,12 +256,6 @@ export default function HomeScreen({ onNavigate }: {
         onClose={() => setTeamPickerOpen(false)}
         selectedTeams={teamSlugs}
         onSave={handleSaveTeams}
-      />
-      <CommentsSheet
-        episode={commentsEpisode}
-        teamColor={commentsColor}
-        visible={!!commentsEpisode}
-        onClose={() => setCommentsEpisode(null)}
       />
       <NotificationsSheet
         visible={notificationsOpen}

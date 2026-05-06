@@ -9,6 +9,7 @@ export interface EpisodeComment {
   content: string;
   created_at: string;
   parent_id: string | null;
+  timestamp_seconds: number | null;  // seconds into episode when comment was posted
   like_count: number;
   is_liked: boolean;
   profile: {
@@ -25,7 +26,7 @@ export function useEpisodeComments(episodeId: string) {
     queryFn: async (): Promise<EpisodeComment[]> => {
       const { data: comments, error } = await supabase
         .from('episode_comments')
-        .select('id, user_id, episode_id, content, created_at, parent_id')
+        .select('id, user_id, episode_id, content, created_at, parent_id, timestamp_seconds')
         .eq('episode_id', episodeId)
         .order('created_at', { ascending: true });
 
@@ -58,6 +59,7 @@ export function useEpisodeComments(episodeId: string) {
 
       return comments.map((c) => ({
         ...c,
+        timestamp_seconds: c.timestamp_seconds ?? null,
         profile: profileMap.get(c.user_id) ?? null,
         like_count: likeCounts.get(c.id) ?? 0,
         is_liked: likedByMe.has(c.id),

@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TrackPlayer from 'react-native-track-player';
-import { View, Text, Modal } from 'react-native';
+import { View, Text } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
@@ -13,7 +13,7 @@ import { usePendingFriendRequestCount } from './src/hooks/queries/useFriendships
 import { navigationRef } from './src/lib/navigationRef';
 import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
 import MiniPlayer from './src/components/MiniPlayer';
-import FullPlayerScreen from './src/screens/FullPlayerScreen';
+import NowPlayingScreen from './src/screens/NowPlayingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -30,6 +30,7 @@ import SubmitShowScreen from './src/screens/SubmitShowScreen';
 import PublicProfileScreen from './src/screens/PublicProfileScreen';
 import FriendsScreen from './src/screens/FriendsScreen';
 import CreatorProfileScreen from './src/screens/CreatorProfileScreen';
+import GameFeedScreen from './src/screens/GameFeedScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -103,7 +104,7 @@ function TabNavigator({ navigation }: any) {
 }
 
 function MainApp() {
-  const { isFullPlayerOpen, openFullPlayer, closeFullPlayer } = usePlayer();
+  const { miniPlayerVisible } = usePlayer();
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -118,16 +119,10 @@ function MainApp() {
         <Stack.Screen name="LibraryDetail" component={LibraryScreen} />
         <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
         <Stack.Screen name="Friends" component={FriendsScreen} />
+        <Stack.Screen name="GameFeed" component={GameFeedScreen} />
+        <Stack.Screen name="NowPlaying" component={NowPlayingScreen} />
       </Stack.Navigator>
-      <MiniPlayer onPress={openFullPlayer} />
-      <Modal
-        visible={isFullPlayerOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={closeFullPlayer}
-      >
-        <FullPlayerScreen onClose={closeFullPlayer} />
-      </Modal>
+      {miniPlayerVisible && <MiniPlayer />}
     </NavigationContainer>
   );
 }

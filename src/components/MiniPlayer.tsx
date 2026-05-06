@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
+import { navigate } from '../lib/navigationRef';
 
 export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
   const { currentEpisode, isPlaying, isLoading, togglePlayPause, progress, dismissPlayer } = usePlayer();
@@ -18,7 +19,7 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
   const accentColor = currentEpisode.teamColor || '#FFFFFF';
 
   return (
-    <TouchableOpacity activeOpacity={0.95} onPress={onPress} style={styles.container}>
+    <TouchableOpacity activeOpacity={0.95} onPress={() => navigate('NowPlaying', { episodeId: currentEpisode.id, scrollTo: 'top' })} style={styles.container}>
       {/* Progress bar at top */}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progressPercent}%` as any, backgroundColor: accentColor }]} />

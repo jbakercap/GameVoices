@@ -113,7 +113,7 @@ export function EpisodeCard({ episode, teamColor, isCurrentlyPlaying, isPlaying,
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', lineHeight: 19 }} numberOfLines={2}>
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', lineHeight: 20 }} numberOfLines={2}>
             {episode.title}
           </Text>
           <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 3 }}>
@@ -529,7 +529,7 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
   }, [isCurrentlyPlaying, episode, teamColor, togglePlayPause, playEpisode]);
 
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: '#1A1A1A', paddingVertical: 14 }}>
+    <View style={{ borderBottomWidth: 1, borderBottomColor: '#1A1A1A', paddingVertical: 12 }}>
 
       {/* Post header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
@@ -537,8 +537,10 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
           onPress={() => onNavigate?.('ShowDetail', { showId: episode.show_id })}
           style={{ flex: 1 }}
         >
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>
-            {episode.show_title || 'Unknown Show'}
+          <Text style={{ color: '#888', fontSize: 13, fontWeight: '400' }} numberOfLines={1}>
+            {(episode.show_title || 'Unknown Show').length > 35
+              ? (episode.show_title || 'Unknown Show').slice(0, 35).trimEnd() + '…'
+              : (episode.show_title || 'Unknown Show')}
           </Text>
           <Text style={{ color: '#555', fontSize: 12, marginTop: 2 }}>
             {teamShortName ? `${teamShortName} · ` : ''}{timeAgo(episode.published_at)}
@@ -566,7 +568,7 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
       </View>
 
       {/* Action bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 8 }}>
         <TouchableOpacity
           onPress={() => toggleLike.mutate({ episodeId: episode.id, isLiked })}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 24 }}
@@ -576,7 +578,7 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => onOpenComments(episode, teamColor)}
+          onPress={() => navigate('NowPlaying', { episodeId: episode.id, scrollTo: 'comments', autoplay: false })}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
           <Ionicons name="chatbubble-outline" size={21} color="#555" />

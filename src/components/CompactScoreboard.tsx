@@ -1,16 +1,202 @@
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  LayoutAnimation, Platform, UIManager,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { useRecentGames } from '../hooks/useRecentGames';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRecentGames, GameWithTeams } from '../hooks/useRecentGames';
+import { useGameRecaps, GameRecapEpisode } from '../hooks/queries/useGameRecaps';
+import { usePlayer } from '../contexts/PlayerContext';
+import { darkenColor } from './EpisodeFeedPost';
+import { formatDurationHuman } from '../lib/formatters';
 
-export function CompactScoreboard({ teamSlugs }: { teamSlugs: string[] }) {
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// ─── Recap mini card ──────────────────────────────────────────────────────────
+
+interface RecapCardProps {
+  episode: GameRecapEpisode;
+  teamColor: string;
+  onPress: () => void;
+}
+
+function RecapCard({ episode, teamColor, onPress }: RecapCardProps) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={{ width: 240, height: 72, borderRadius: 12, overflow: 'hidden' }}
+    >
+      <LinearGradient
+        colors={[darkenColor(teamColor, 0.55), darkenColor(teamColor, 0.05)]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: 10, gap: 10 }}
+      >
+        <View style={{
+          width: 48, height: 48, borderRadius: 8,
+          backgroundColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexShrink: 0,
+        }}>
+          {episode.artwork_url ? (
+            <Image source={{ uri: episode.artwork_url }} style={{ width: 48, height: 48 }} contentFit="cover" />
+          ) : (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="mic" size={18} color="rgba(255,255,255,0.4)" />
+            </View>
+          )}
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
+            {episode.title}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+            {episode.show_title} · {formatDurationHuman(episode.duration_seconds)}
+          </Text>
+        </View>
+
+        <View style={{
+          width: 28, height: 28, borderRadius: 14,
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Recap shelf ──────────────────────────────────────────────────────────────
+
+interface RecapShelfProps {
+  game: GameWithTeams;
+  onNavigate?: (screen: string, params: any) => void;
+}
+
+function RecapShelf({ game, onNavigate }: RecapShelfProps) {
+  const { data: episodes = [], isLoading } = useGameRecaps(game.storyId);
+  const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
+  const awayName = game.awayTeam?.short_name || 'Away';
+  const homeName = game.homeTeam?.short_name || 'Home';
+
+  // Match episode's show_team_slugs against game teams to pick the right color
+  function colorForEpisode(ep: GameRecapEpisode): string {
+    const slugs = ep.show_team_slugs || [];
+    if (slugs.includes(game.home_team_slug)) return game.homeTeam?.primary_color || '#1E2A3A';
+    if (slugs.includes(game.away_team_slug)) return game.awayTeam?.primary_color || '#1E2A3A';
+    // Fall back to the followed team's color
+    const followedIsHome = game.followedTeamSlug === game.home_team_slug;
+    return (followedIsHome ? game.homeTeam?.primary_color : game.awayTeam?.primary_color) || '#1E2A3A';
+  }
+
+  return (
+    <View style={{ backgroundColor: '#0F0F0F', paddingTop: 14, paddingBottom: 14 }}>
+      <TouchableOpacity
+        onPress={() => game.storyId && onNavigate?.('GameFeed', {
+          storyId: game.storyId,
+          title: `${awayName} vs ${homeName}`,
+          homeTeamSlug: game.home_team_slug,
+          awayTeamSlug: game.away_team_slug,
+          homeColor: game.homeTeam?.primary_color || '#333',
+          awayColor: game.awayTeam?.primary_color || '#333',
+          homeShortName: homeName,
+          awayShortName: awayName,
+        })}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, marginBottom: 10 }}
+      >
+        <Text style={{ color: '#888', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          Recaps · {awayName} vs {homeName}
+        </Text>
+        <Ionicons name="chevron-forward" size={12} color="#555" />
+      </TouchableOpacity>
+
+      {isLoading ? (
+        <ActivityIndicator color="#555" style={{ marginVertical: 8 }} />
+      ) : episodes.length === 0 ? (
+        <Text style={{ color: '#555', fontSize: 13, paddingHorizontal: 16 }}>
+          No recaps yet for this game.
+        </Text>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        >
+          {episodes.map(ep => {
+            const color = colorForEpisode(ep);
+            const isCurrent = currentEpisode?.id === ep.id;
+            return (
+              <RecapCard
+                key={ep.id}
+                episode={ep}
+                teamColor={color}
+                onPress={() => {
+                  if (isCurrent) {
+                    togglePlayPause();
+                  } else {
+                    playEpisode({
+                      id: ep.id,
+                      title: ep.title,
+                      showTitle: ep.show_title || '',
+                      artworkUrl: ep.artwork_url || undefined,
+                      audioUrl: ep.audio_url,
+                      durationSeconds: ep.duration_seconds,
+                      teamColor: color,
+                    });
+                  }
+                }}
+              />
+            );
+          })}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string[]; onNavigate?: (screen: string, params: any) => void }) {
   const { data: games, isLoading } = useRecentGames(teamSlugs);
+  const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [seenGameIds, setSeenGameIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem('seen_game_recap_ids').then(raw => {
+      if (raw) setSeenGameIds(new Set(JSON.parse(raw)));
+    });
+  }, []);
+
   if (isLoading || !games || games.length === 0) return null;
+
+  const expandedGame = games.find(g => g.id === expandedGameId) ?? null;
+
+  const handleCardPress = (gameId: string) => {
+    LayoutAnimation.configureNext({
+      duration: 250,
+      create: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity },
+      update: { type: LayoutAnimation.Types.easeOut },
+      delete: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity },
+    });
+    if (!seenGameIds.has(gameId)) {
+      const next = new Set(seenGameIds).add(gameId);
+      setSeenGameIds(next);
+      AsyncStorage.setItem('seen_game_recap_ids', JSON.stringify([...next]));
+    }
+    setExpandedGameId(prev => (prev === gameId ? null : gameId));
+  };
 
   return (
     <View style={{ borderBottomWidth: 1, borderBottomColor: '#222' }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {games.map((game, i) => {
+          const isActive = expandedGameId === game.id;
           const followedIsHome = game.followedTeamSlug === game.home_team_slug;
           const myTeam = followedIsHome ? game.homeTeam : game.awayTeam;
           const oppTeam = followedIsHome ? game.awayTeam : game.homeTeam;
@@ -22,19 +208,34 @@ export function CompactScoreboard({ teamSlugs }: { teamSlugs: string[] }) {
             : '';
 
           return (
-            <View
+            <TouchableOpacity
               key={game.id}
+              activeOpacity={0.75}
+              onPress={() => handleCardPress(game.id)}
               style={{
                 borderRightWidth: i < games.length - 1 ? 1 : 0,
                 borderRightColor: '#222',
+                borderBottomWidth: 2,
+                borderBottomColor: isActive ? '#fff' : 'transparent',
+                backgroundColor: isActive ? '#1A1A1A' : 'transparent',
                 paddingHorizontal: 16,
                 paddingVertical: 10,
                 minWidth: 155,
               }}
             >
-              <Text style={{ color: '#555', fontSize: 10, fontWeight: '600', marginBottom: 6 }}>
-                FINAL · {date}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={{ color: '#555', fontSize: 10, fontWeight: '600' }}>
+                  FINAL · {date}
+                </Text>
+                {(game.episode_count ?? 0) > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: seenGameIds.has(game.id) ? '#555' : '#22c55e' }} />
+                    <Text style={{ color: seenGameIds.has(game.id) ? '#555' : '#22c55e', fontSize: 10, fontWeight: '600' }}>
+                      {game.episode_count} ep{game.episode_count === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
                 <View style={{
@@ -79,10 +280,12 @@ export function CompactScoreboard({ teamSlugs }: { teamSlugs: string[] }) {
                   {oppScore}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </ScrollView>
+
+      {expandedGame && <RecapShelf game={expandedGame} onNavigate={onNavigate} />}
     </View>
   );
 }
