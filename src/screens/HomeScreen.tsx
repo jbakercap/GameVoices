@@ -18,6 +18,8 @@ import { CompactScoreboard } from '../components/CompactScoreboard';
 import { EpisodeFeedPost, FeedEpisode, timeAgo } from '../components/EpisodeFeedPost';
 import { useNotifications, useUnreadNotificationCount, AppNotification } from '../hooks/queries/useNotifications';
 import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotificationsRead';
+import { useListenHistory } from '../hooks/queries/useListenHistory';
+import { useFollowedShows } from '../hooks/queries/useUserLibrary';
 
 // ─── Notifications Sheet ──────────────────────────────────────────────────────
 
@@ -113,6 +115,105 @@ function NotificationsSheet({ visible, onClose, onNavigate }: NotificationsSheet
         </View>
       </View>
     </Modal>
+  );
+}
+
+// ─── Recently Played Shelf ────────────────────────────────────────────────────
+
+function RecentlyPlayedShelf({ onNavigate }: { onNavigate?: (screen: string, params: any) => void }) {
+  const { data: history = [] } = useListenHistory({ limit: 10 });
+  const { playEpisode } = usePlayer();
+
+  const items = history.filter(h => h.episodes);
+  if (items.length === 0) return null;
+
+  return (
+    <View style={{ paddingTop: 16, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 }}>
+        Recently Played
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 16 }}>
+        {items.map((item) => {
+          const ep = item.episodes!;
+          const artwork = ep.artwork_url || ep.shows?.artwork_url;
+          return (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => playEpisode({
+                id: ep.id,
+                title: ep.title,
+                showTitle: ep.shows?.title || '',
+                artworkUrl: artwork || undefined,
+                audioUrl: ep.audio_url,
+                durationSeconds: ep.duration_seconds || undefined,
+              })}
+              style={{ width: 110 }}
+            >
+              <View style={{ width: 110, height: 110, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+                {artwork ? (
+                  <Image source={{ uri: artwork }} style={{ width: 110, height: 110 }} contentFit="cover" />
+                ) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="mic" size={28} color="#555" />
+                  </View>
+                )}
+                <View style={{
+                  position: 'absolute', bottom: 6, right: 6,
+                  width: 28, height: 28, borderRadius: 14,
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+                </View>
+              </View>
+              <Text style={{ color: '#666', fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
+                {ep.shows?.title}
+              </Text>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }} numberOfLines={2}>
+                {ep.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── Followed Shows Shelf ─────────────────────────────────────────────────────
+
+function FollowedShowsShelf({ onNavigate }: { onNavigate?: (screen: string, params: any) => void }) {
+  const { data: shows = [] } = useFollowedShows();
+  if (shows.length === 0) return null;
+
+  return (
+    <View style={{ paddingTop: 16, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 }}>
+        Following
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 16 }}>
+        {shows.map((show) => (
+          <TouchableOpacity
+            key={show.id}
+            onPress={() => onNavigate?.('ShowDetail', { showId: show.id })}
+            style={{ width: 80, alignItems: 'center' }}
+          >
+            <View style={{ width: 70, height: 70, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+              {show.artwork_url ? (
+                <Image source={{ uri: show.artwork_url }} style={{ width: 70, height: 70 }} contentFit="cover" />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="mic" size={24} color="#555" />
+                </View>
+              )}
+            </View>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
+              {show.title}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -225,12 +326,27 @@ export default function HomeScreen({ onNavigate }: {
     setRefreshing(false);
   }, [queryClient]);
 
-  const renderPost = useCallback(({ item }: { item: FeedEpisode }) => {
-    const teamColor = teamColorMap[item.team_slug || ''] || '#1E2A3A';
-    const teamShortName = teamNameMap[item.team_slug || ''];
+  type FeedItem = { type: 'episode'; data: FeedEpisode } | { type: 'followed-shows-shelf' };
+
+  const feedItems = useMemo((): FeedItem[] => {
+    const episodeItems: FeedItem[] = episodes.map(ep => ({ type: 'episode' as const, data: ep }));
+    if (episodeItems.length > 4) {
+      episodeItems.splice(4, 0, { type: 'followed-shows-shelf' as const });
+    } else if (episodeItems.length > 0) {
+      episodeItems.push({ type: 'followed-shows-shelf' as const });
+    }
+    return episodeItems;
+  }, [episodes]);
+
+  const renderPost = useCallback(({ item }: { item: FeedItem }) => {
+    if (item.type === 'followed-shows-shelf') {
+      return <FollowedShowsShelf onNavigate={onNavigate} />;
+    }
+    const teamColor = teamColorMap[item.data.team_slug || ''] || '#1E2A3A';
+    const teamShortName = teamNameMap[item.data.team_slug || ''];
     return (
       <EpisodeFeedPost
-        episode={item}
+        episode={item.data}
         teamColor={teamColor}
         teamShortName={teamShortName}
         onOpenComments={() => {}}
@@ -239,7 +355,12 @@ export default function HomeScreen({ onNavigate }: {
     );
   }, [teamColorMap, teamNameMap, onNavigate]);
 
-  const ListHeader = useMemo(() => <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />, [teamSlugs, onNavigate]);
+  const ListHeader = useMemo(() => (
+    <>
+      <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />
+      <RecentlyPlayedShelf onNavigate={onNavigate} />
+    </>
+  ), [teamSlugs, onNavigate]);
 
   if (profileLoading) {
     return (
@@ -320,8 +441,8 @@ export default function HomeScreen({ onNavigate }: {
 
       {/* ── Feed ── */}
       <FlatList
-        data={episodes}
-        keyExtractor={(item) => item.id}
+        data={feedItems}
+        keyExtractor={(item) => item.type === 'followed-shows-shelf' ? 'followed-shows-shelf' : item.data.id}
         renderItem={renderPost}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={

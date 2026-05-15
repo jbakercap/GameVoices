@@ -5,12 +5,11 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecentGames, GameWithTeams } from '../hooks/useRecentGames';
 import { useGameRecaps, GameRecapEpisode } from '../hooks/queries/useGameRecaps';
 import { usePlayer } from '../contexts/PlayerContext';
-import { darkenColor } from './EpisodeFeedPost';
+import { darkenColor, withAlpha } from './EpisodeFeedPost';
 import { formatDurationHuman } from '../lib/formatters';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -30,44 +29,42 @@ function RecapCard({ episode, teamColor, onPress }: RecapCardProps) {
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
-      style={{ width: 240, height: 72, borderRadius: 12, overflow: 'hidden' }}
+      style={{
+        width: 240, height: 72, borderRadius: 12,
+        backgroundColor: '#282828',
+        borderWidth: 1, borderColor: withAlpha(teamColor, 0.75),
+        flexDirection: 'row', alignItems: 'center', padding: 10, gap: 10,
+      }}
     >
-      <LinearGradient
-        colors={[darkenColor(teamColor, 0.55), darkenColor(teamColor, 0.05)]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: 10, gap: 10 }}
-      >
-        <View style={{
-          width: 48, height: 48, borderRadius: 8,
-          backgroundColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexShrink: 0,
-        }}>
-          {episode.artwork_url ? (
-            <Image source={{ uri: episode.artwork_url }} style={{ width: 48, height: 48 }} contentFit="cover" />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="mic" size={18} color="rgba(255,255,255,0.4)" />
-            </View>
-          )}
-        </View>
+      <View style={{
+        width: 48, height: 48, borderRadius: 8,
+        backgroundColor: '#1E1E1E', overflow: 'hidden', flexShrink: 0,
+      }}>
+        {episode.artwork_url ? (
+          <Image source={{ uri: episode.artwork_url }} style={{ width: 48, height: 48 }} contentFit="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="mic" size={18} color="rgba(255,255,255,0.4)" />
+          </View>
+        )}
+      </View>
 
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
-            {episode.title}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 }} numberOfLines={1}>
-            {episode.show_title} · {formatDurationHuman(episode.duration_seconds)}
-          </Text>
-        </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
+          {episode.title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+          {episode.show_title} · {formatDurationHuman(episode.duration_seconds)}
+        </Text>
+      </View>
 
-        <View style={{
-          width: 28, height: 28, borderRadius: 14,
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
-        </View>
-      </LinearGradient>
+      <View style={{
+        width: 28, height: 28, borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -240,7 +237,7 @@ export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
                 <View style={{
                   width: 20, height: 20, borderRadius: 10,
-                  backgroundColor: myTeam?.primary_color || '#333',
+                  backgroundColor: '#fff',
                   alignItems: 'center', justifyContent: 'center', marginRight: 8,
                 }}>
                   {myTeam?.logo_url ? (
@@ -262,7 +259,7 @@ export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{
                   width: 20, height: 20, borderRadius: 10,
-                  backgroundColor: oppTeam?.primary_color || '#333',
+                  backgroundColor: '#fff',
                   alignItems: 'center', justifyContent: 'center', marginRight: 8,
                 }}>
                   {oppTeam?.logo_url ? (

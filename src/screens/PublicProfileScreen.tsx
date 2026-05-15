@@ -30,8 +30,7 @@ import {
   useDeclineFriendRequest,
   useRemoveFriend,
 } from '../hooks/mutations/useFriendshipMutations';
-import { LinearGradient } from 'expo-linear-gradient';
-import { timeAgo, darkenColor, CommentsSheet, FeedEpisode } from '../components/EpisodeFeedPost';
+import { timeAgo, darkenColor, withAlpha, CommentsSheet, FeedEpisode } from '../components/EpisodeFeedPost';
 import { usePlayer } from '../contexts/PlayerContext';
 import { navigate } from '../lib/navigationRef';
 
@@ -140,7 +139,7 @@ function TeamChips({ teams }: { teams: { primary_color: string | null; logo_url:
       {visible.map((team, i) => (
         <View key={team.slug} style={{
           width: 34, height: 34, borderRadius: 17,
-          backgroundColor: team.primary_color || '#2a2a2a',
+          backgroundColor: '#fff',
           borderWidth: 2.5, borderColor: '#121212',
           marginLeft: i === 0 ? 0 : -8,
           alignItems: 'center', justifyContent: 'center',
@@ -357,33 +356,32 @@ function AllCommentsSheet({ userId, title, displayName, visible, onClose }: {
 
                     {/* Episode card */}
                     <TouchableOpacity activeOpacity={0.85} onPress={handlePlay}
-                      style={{ borderRadius: 12, overflow: 'hidden' }}>
-                      <LinearGradient
-                        colors={[darkenColor(cardColor, 0.55), darkenColor(cardColor, 0.05)]}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 }}>
-                        <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                          {(c.show_artwork_url || c.artwork_url) ? (
-                            <Image source={{ uri: c.show_artwork_url || c.artwork_url! }}
-                              style={{ width: 48, height: 48 }} contentFit="cover" accessible={false} />
-                          ) : <View style={{ width: 48, height: 48, backgroundColor: '#333' }} />}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }}
-                            numberOfLines={2}>{c.episode_title}</Text>
-                          {durationLabel && (
-                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 3 }}>{durationLabel}</Text>
-                          )}
-                        </View>
-                        <View style={{ width: 32, height: 32, borderRadius: 16,
-                          backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Ionicons
-                            name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
-                            size={14} color="#000"
-                            style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
-                          />
-                        </View>
-                      </LinearGradient>
+                      style={{
+                        borderRadius: 12, backgroundColor: '#282828',
+                        borderWidth: 1, borderColor: withAlpha(cardColor, 0.75),
+                        flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10,
+                      }}>
+                      <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+                        {(c.show_artwork_url || c.artwork_url) ? (
+                          <Image source={{ uri: c.show_artwork_url || c.artwork_url! }}
+                            style={{ width: 48, height: 48 }} contentFit="cover" accessible={false} />
+                        ) : <View style={{ width: 48, height: 48, backgroundColor: '#333' }} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }}
+                          numberOfLines={2}>{c.episode_title}</Text>
+                        {durationLabel && (
+                          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 3 }}>{durationLabel}</Text>
+                        )}
+                      </View>
+                      <View style={{ width: 32, height: 32, borderRadius: 16,
+                        backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Ionicons
+                          name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
+                          size={14} color="#fff"
+                          style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
+                        />
+                      </View>
                     </TouchableOpacity>
 
                     {/* Connector + comment */}
@@ -903,33 +901,32 @@ export default function PublicProfileScreen({ overrideUserId }: { overrideUserId
 
                   {/* Episode card — taps to play */}
                   <TouchableOpacity activeOpacity={0.85} onPress={handlePlay}
-                    style={{ borderRadius: 12, overflow: 'hidden' }}>
-                    <LinearGradient
-                      colors={[darkenColor(cardColor, 0.55), darkenColor(cardColor, 0.05)]}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 }}>
-                      <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                        {(c.show_artwork_url || c.artwork_url) ? (
-                          <Image source={{ uri: c.show_artwork_url || c.artwork_url! }}
-                            style={{ width: 48, height: 48 }} contentFit="cover" accessible={false} />
-                        ) : <View style={{ width: 48, height: 48, backgroundColor: '#333' }} />}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }}
-                          numberOfLines={2}>{c.episode_title}</Text>
-                        {durationLabel && (
-                          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 3 }}>{durationLabel}</Text>
-                        )}
-                      </View>
-                      <View style={{ width: 32, height: 32, borderRadius: 16,
-                        backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Ionicons
-                          name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
-                          size={14} color="#000"
-                          style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
-                        />
-                      </View>
-                    </LinearGradient>
+                    style={{
+                      borderRadius: 12, backgroundColor: '#282828',
+                      borderWidth: 1, borderColor: withAlpha(cardColor, 0.75),
+                      flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10,
+                    }}>
+                    <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+                      {(c.show_artwork_url || c.artwork_url) ? (
+                        <Image source={{ uri: c.show_artwork_url || c.artwork_url! }}
+                          style={{ width: 48, height: 48 }} contentFit="cover" accessible={false} />
+                      ) : <View style={{ width: 48, height: 48, backgroundColor: '#333' }} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }}
+                        numberOfLines={2}>{c.episode_title}</Text>
+                      {durationLabel && (
+                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 3 }}>{durationLabel}</Text>
+                      )}
+                    </View>
+                    <View style={{ width: 32, height: 32, borderRadius: 16,
+                      backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Ionicons
+                        name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
+                        size={14} color="#fff"
+                        style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
+                      />
+                    </View>
                   </TouchableOpacity>
 
                   {/* Connector + comment — taps to open thread */}

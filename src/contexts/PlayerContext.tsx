@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 import TrackPlayer, {
   usePlaybackState,
   useProgress,
@@ -164,6 +165,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         await TrackPlayer.seekTo(episode.startTime);
       }
       setCurrentEpisode(episode);
+
+      // Record listen event
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        supabase.from('user_listen_history').upsert({
+          user_id: user.id,
+          episode_id: episode.id,
+          listened_at: new Date().toISOString(),
+          duration_listened: 0,
+        }, { onConflict: 'user_id,episode_id' }).then(() => {});
+      }
     } catch (error) {
       console.error('Error playing episode:', error);
     }

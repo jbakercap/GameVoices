@@ -58,8 +58,8 @@ function EpisodeCard({ artwork, title, duration }: {
   return (
     <TouchableOpacity activeOpacity={0.85} style={{
       flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: '#1a1a1a', borderRadius: 12,
-      padding: 10, borderWidth: 1, borderColor: '#2a2a2a',
+      backgroundColor: '#282828', borderRadius: 12,
+      padding: 10, borderWidth: 1, borderColor: '#3a3a3a',
     }}>
       <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
         <Image source={{ uri: artwork }} style={{ width: 48, height: 48 }} contentFit="cover" />
@@ -70,8 +70,8 @@ function EpisodeCard({ artwork, title, duration }: {
         <Text style={{ color: '#555', fontSize: 11, marginTop: 3 }}>{duration}</Text>
       </View>
       <View style={{ width: 32, height: 32, borderRadius: 16,
-        backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Ionicons name="play" size={14} color="#000" style={{ marginLeft: 2 }} />
+        backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
       </View>
     </TouchableOpacity>
   );

@@ -111,7 +111,7 @@ function FriendRow({ friend }: { friend: any }) {
             {teams.slice(0, 5).map((team, i) => (
               <View key={team.slug} style={{
                 width: 22, height: 22, borderRadius: 11,
-                backgroundColor: team.primary_color || '#2a2a2a',
+                backgroundColor: '#fff',
                 borderWidth: 1.5, borderColor: '#121212',
                 marginLeft: i === 0 ? 0 : -5,
                 alignItems: 'center', justifyContent: 'center',

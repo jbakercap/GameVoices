@@ -4,7 +4,6 @@ import {
   TextInput, KeyboardAvoidingView, Platform, Share,
   ActivityIndicator, Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
@@ -17,6 +16,7 @@ import { useEpisodeComments, useEpisodeCommentCount, EpisodeComment } from '../h
 import { useAddEpisodeComment } from '../hooks/mutations/useAddEpisodeComment';
 import { useToggleCommentLike } from '../hooks/mutations/useToggleCommentLike';
 import { useProfile } from '../hooks/useProfile';
+import { useFriendsWhoListened, ListenerProfile } from '../hooks/queries/useFriendsWhoListened';
 import { formatDurationHuman } from '../lib/formatters';
 
 // ─── Shared episode type ──────────────────────────────────────────────────────
@@ -44,6 +44,13 @@ export function timeAgo(dateStr: string | null): string {
   if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
   return `${days}d`;
+}
+
+export function withAlpha(hex: string, alpha: number): string {
+  const cleaned = hex.replace('#', '');
+  if (cleaned.length !== 6) return hex;
+  const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `#${cleaned}${alphaHex}`;
 }
 
 export function darkenColor(hex: string, amount = 0.2): string {
@@ -93,46 +100,120 @@ interface EpisodeCardProps {
 export function EpisodeCard({ episode, teamColor, isCurrentlyPlaying, isPlaying, onPress }: EpisodeCardProps) {
   const artwork = episode.artwork_url || episode.show_artwork_url;
   return (
-    <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={{ borderRadius: 14, overflow: 'hidden' }}>
-      <LinearGradient
-        colors={[darkenColor(teamColor, 0.55), darkenColor(teamColor, 0.05)]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ flexDirection: 'row', alignItems: 'center', padding: 10, gap: 12 }}
-      >
-        <View style={{
-          width: 56, height: 56, borderRadius: 9,
-          backgroundColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexShrink: 0,
-        }}>
-          {artwork ? (
-            <Image source={{ uri: artwork }} style={{ width: 56, height: 56 }} contentFit="cover" />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="mic" size={22} color="rgba(255,255,255,0.4)" />
-            </View>
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', lineHeight: 20 }} numberOfLines={2}>
-            {episode.title}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 3 }}>
-            {formatDurationHuman(episode.duration_seconds)}
-          </Text>
-        </View>
-        <View style={{
-          width: 38, height: 38, borderRadius: 19,
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Ionicons
-            name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
-            size={17} color="#fff"
-            style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
-          />
-        </View>
-      </LinearGradient>
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={onPress}
+      style={{
+        borderRadius: 14,
+        backgroundColor: '#282828',
+        borderWidth: 1,
+        borderColor: withAlpha(teamColor, 0.75),
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        gap: 12,
+      }}
+    >
+      <View style={{
+        width: 56, height: 56, borderRadius: 9,
+        backgroundColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexShrink: 0,
+      }}>
+        {artwork ? (
+          <Image source={{ uri: artwork }} style={{ width: 56, height: 56 }} contentFit="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="mic" size={22} color="rgba(255,255,255,0.4)" />
+          </View>
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', lineHeight: 20 }} numberOfLines={2}>
+          {episode.title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 3 }}>
+          {formatDurationHuman(episode.duration_seconds)}
+        </Text>
+      </View>
+      <View style={{
+        width: 38, height: 38, borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Ionicons
+          name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
+          size={17} color="#fff"
+          style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
+        />
+      </View>
     </TouchableOpacity>
+  );
+}
+
+// ─── Friends Who Listened Avatar Stack ───────────────────────────────────────
+
+const AVATAR_SIZE = 22;
+const AVATAR_OVERLAP = 8;
+
+function FriendsWhoListenedStack({ episodeId }: { episodeId: string }) {
+  const { data: listeners = [] } = useFriendsWhoListened(episodeId);
+  if (listeners.length === 0) return null;
+
+  const shown = listeners.slice(0, 3);
+  const overflow = listeners.length - shown.length;
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
+      <View style={{ flexDirection: 'row' }}>
+        {shown.map((listener, i) => (
+          <View
+            key={listener.user_id}
+            style={{
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+              borderRadius: AVATAR_SIZE / 2,
+              backgroundColor: '#3A3A3A',
+              borderWidth: 1.5,
+              borderColor: '#121212',
+              overflow: 'hidden',
+              marginLeft: i === 0 ? 0 : -AVATAR_OVERLAP,
+              zIndex: shown.length - i,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {listener.avatar_url ? (
+              <Image
+                source={{ uri: listener.avatar_url }}
+                style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}
+                contentFit="cover"
+              />
+            ) : (
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                {(listener.display_name || '?').charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+        ))}
+        {overflow > 0 && (
+          <View
+            style={{
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+              borderRadius: AVATAR_SIZE / 2,
+              backgroundColor: '#3A3A3A',
+              borderWidth: 1.5,
+              borderColor: '#121212',
+              marginLeft: -AVATAR_OVERLAP,
+              zIndex: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: '#aaa', fontSize: 8, fontWeight: '700' }}>+{overflow}</Text>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -584,6 +665,8 @@ export function EpisodeFeedPost({ episode, teamColor, teamShortName, onOpenComme
           <Ionicons name="chatbubble-outline" size={21} color="#555" />
           {commentCount > 0 && <Text style={{ color: '#555', fontSize: 14 }}>{commentCount}</Text>}
         </TouchableOpacity>
+
+        <FriendsWhoListenedStack episodeId={episode.id} />
 
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <TouchableOpacity onPress={() => shareEpisode(episode)}>
