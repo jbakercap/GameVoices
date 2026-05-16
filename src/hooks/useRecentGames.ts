@@ -27,7 +27,7 @@ export interface GameWithTeams {
 }
 
 const MAX_DAYS = 7;
-const MAX_GAMES_PER_TEAM = 3;
+const MAX_GAMES_PER_TEAM = 5;
 
 export function useRecentGames(teamSlugs: string[]) {
   return useQuery({
@@ -46,7 +46,7 @@ export function useRecentGames(teamSlugs: string[]) {
         .or(`home_team_slug.in.(${teamSlugs.join(',')}),away_team_slug.in.(${teamSlugs.join(',')})`)
         .gte('event_date', cutoffDate)
         .order('event_date', { ascending: false })
-        .limit(30);
+        .limit(60);
 
       if (error) throw error;
 

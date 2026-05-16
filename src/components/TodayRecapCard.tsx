@@ -40,9 +40,12 @@ export function extractTeamNames(headline: string): string[] {
 const LEAGUE_HOURS: Record<string, number> = {
   mlb: 36,
   nba: 48,
-  nfl: 144, // 6 days
+  nfl: 144, // 6 days — weekly schedule
   nhl: 48,
   wnba: 48,
+  ncaaf: 144, // 6 days — weekly schedule
+  ncaab: 48,
+  mls: 72,
 };
 const DEFAULT_HOURS = 48;
 const MAX_HOURS = 144;

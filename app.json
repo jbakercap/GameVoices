@@ -13,7 +13,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.gamevoices.app"
+      "bundleIdentifier": "com.gamevoices.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -40,6 +44,12 @@
           "sounds": []
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "88fcc2a4-58ed-4d9c-a0fc-93c92e1213a1"
+      }
+    },
+    "owner": "captiaan"
   }
 }

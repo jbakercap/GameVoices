@@ -77,11 +77,11 @@ export function useTeamEpisodes(teamSlug: string | undefined) {
       const raw = (rawEpisodes || []) as unknown as EpisodeWithShow[];
       const relevant = raw.filter(ep => isRelevant(ep, result.teamShortName, result.multiTeamShowIds));
       const filtered = deduplicateEpisodes(relevant).slice(0, PAGE_SIZE);
-      const lastRaw = raw[raw.length - 1];
+      const lastFiltered = filtered[filtered.length - 1];
 
       return {
         episodes: filtered,
-        nextCursor: raw.length === FETCH_SIZE ? lastRaw?.published_at : null,
+        nextCursor: raw.length === FETCH_SIZE ? (lastFiltered?.published_at ?? null) : null,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,

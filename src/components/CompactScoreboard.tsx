@@ -96,7 +96,7 @@ function RecapShelf({ game, onNavigate }: RecapShelfProps) {
     <View style={{ backgroundColor: '#0F0F0F', paddingTop: 14, paddingBottom: 14 }}>
       <TouchableOpacity
         onPress={() => game.storyIds?.length && onNavigate?.('GameFeed', {
-          storyId: game.storyIds[0],
+          storyIds: game.storyIds,
           title: `${awayName} vs ${homeName}`,
           homeTeamSlug: game.home_team_slug,
           awayTeamSlug: game.away_team_slug,

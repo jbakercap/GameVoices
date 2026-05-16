@@ -58,7 +58,7 @@ export function useTeamGameStories(teamSlug?: string) {
         .gte('event_date', cutoff)
         .order('event_date', { ascending: false })
         .order('episode_count', { ascending: false })
-        .limit(12);
+        .limit(25);
 
       if (error || !data?.length) return [];
 

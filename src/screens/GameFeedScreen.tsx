@@ -8,7 +8,8 @@ import { useGameRecaps } from '../hooks/queries/useGameRecaps';
 import { EpisodeFeedPost, FeedEpisode } from '../components/EpisodeFeedPost';
 
 interface GameFeedParams {
-  storyId: string;
+  storyId?: string;
+  storyIds?: string[];
   title: string;
   homeTeamSlug: string;
   awayTeamSlug: string;
@@ -23,6 +24,7 @@ export default function GameFeedScreen() {
   const route = useRoute<any>();
   const {
     storyId,
+    storyIds,
     title,
     homeTeamSlug,
     awayTeamSlug,
@@ -32,7 +34,8 @@ export default function GameFeedScreen() {
     awayShortName,
   } = route.params as GameFeedParams;
 
-  const { data: recaps = [], isLoading } = useGameRecaps(storyId ? [storyId] : undefined);
+  const effectiveIds = storyIds ?? (storyId ? [storyId] : []);
+  const { data: recaps = [], isLoading } = useGameRecaps(effectiveIds.length > 0 ? effectiveIds : undefined);
 
   // Map GameRecapEpisode → FeedEpisode
   const episodes: FeedEpisode[] = useMemo(() =>
