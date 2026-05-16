@@ -32,7 +32,7 @@ export default function GameFeedScreen() {
     awayShortName,
   } = route.params as GameFeedParams;
 
-  const { data: recaps = [], isLoading } = useGameRecaps(storyId);
+  const { data: recaps = [], isLoading } = useGameRecaps(storyId ? [storyId] : undefined);
 
   // Map GameRecapEpisode → FeedEpisode
   const episodes: FeedEpisode[] = useMemo(() =>
