@@ -22,7 +22,7 @@ export interface GameWithTeams {
   homeTeam?: TeamInfo;
   awayTeam?: TeamInfo;
   followedTeamSlug: string;
-  storyId?: string;
+  storyIds?: string[];
   episode_count?: number;
 }
 
@@ -79,12 +79,15 @@ export function useRecentGames(teamSlugs: string[]) {
         .eq('status', 'active')
         .eq('story_type', 'game_result');
 
-      const storyByGameId: Record<string, { id: string; episode_count: number }> = {};
+      const storyByGameId: Record<string, { ids: string[]; episode_count: number }> = {};
       for (const s of storiesData || []) {
         if (!s.game_id) continue;
         const existing = storyByGameId[s.game_id];
-        if (!existing || s.episode_count > existing.episode_count) {
-          storyByGameId[s.game_id] = { id: s.id, episode_count: s.episode_count };
+        if (!existing) {
+          storyByGameId[s.game_id] = { ids: [s.id], episode_count: s.episode_count };
+        } else {
+          existing.ids.push(s.id);
+          existing.episode_count += s.episode_count;
         }
       }
 
@@ -112,7 +115,7 @@ export function useRecentGames(teamSlugs: string[]) {
           homeTeam: teamsBySlug[g.home_team_slug],
           awayTeam: teamsBySlug[g.away_team_slug],
           followedTeamSlug,
-          storyId: story?.id,
+          storyIds: story?.ids,
           episode_count: story?.episode_count,
         });
       }

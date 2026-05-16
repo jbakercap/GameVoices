@@ -77,7 +77,7 @@ interface RecapShelfProps {
 }
 
 function RecapShelf({ game, onNavigate }: RecapShelfProps) {
-  const { data: episodes = [], isLoading } = useGameRecaps(game.storyId);
+  const { data: episodes = [], isLoading } = useGameRecaps(game.storyIds);
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause } = usePlayer();
   const awayName = game.awayTeam?.short_name || 'Away';
   const homeName = game.homeTeam?.short_name || 'Home';
@@ -95,8 +95,8 @@ function RecapShelf({ game, onNavigate }: RecapShelfProps) {
   return (
     <View style={{ backgroundColor: '#0F0F0F', paddingTop: 14, paddingBottom: 14 }}>
       <TouchableOpacity
-        onPress={() => game.storyId && onNavigate?.('GameFeed', {
-          storyId: game.storyId,
+        onPress={() => game.storyIds?.length && onNavigate?.('GameFeed', {
+          storyId: game.storyIds[0],
           title: `${awayName} vs ${homeName}`,
           homeTeamSlug: game.home_team_slug,
           awayTeamSlug: game.away_team_slug,

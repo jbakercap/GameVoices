@@ -14,11 +14,12 @@ export interface GameRecapEpisode {
   show_team_slugs: string[] | null;
 }
 
-export function useGameRecaps(storyId: string | undefined) {
+export function useGameRecaps(storyIds: string[] | undefined) {
+  const key = storyIds?.slice().sort().join(',') ?? '';
   return useQuery({
-    queryKey: ['game-recaps', storyId],
+    queryKey: ['game-recaps', key],
     queryFn: async (): Promise<GameRecapEpisode[]> => {
-      if (!storyId) return [];
+      if (!storyIds || storyIds.length === 0) return [];
 
       const { data, error } = await supabase
         .from('episode_stories')
@@ -29,14 +30,24 @@ export function useGameRecaps(storyId: string | undefined) {
             show:shows ( id, title, artwork_url, team_slugs, status )
           )
         `)
-        .eq('story_id', storyId);
+        .in('story_id', storyIds);
 
       if (error) throw error;
 
-      return (data || [])
-        .filter((row: any) => row.episode && (row.episode.show?.status === 'active' || !row.episode.show?.status))
-        .sort((a: any, b: any) => (b.relevance ?? 0) - (a.relevance ?? 0))
-        .map((row: any) => {
+      // Deduplicate episodes by id, keeping highest relevance
+      const byId = new Map<string, { relevance: number; row: any }>();
+      for (const row of data || []) {
+        if (!row.episode) continue;
+        const existing = byId.get(row.episode.id);
+        if (!existing || (row.relevance ?? 0) > existing.relevance) {
+          byId.set(row.episode.id, { relevance: row.relevance ?? 0, row });
+        }
+      }
+
+      return Array.from(byId.values())
+        .filter(({ row }) => row.episode.show?.status === 'active' || !row.episode.show?.status)
+        .sort((a, b) => b.relevance - a.relevance)
+        .map(({ row }) => {
           const ep = row.episode;
           const show = ep.show;
           return {
@@ -53,7 +64,7 @@ export function useGameRecaps(storyId: string | undefined) {
           };
         });
     },
-    enabled: !!storyId,
+    enabled: !!storyIds && storyIds.length > 0,
     staleTime: 10 * 60 * 1000,
   });
 }
