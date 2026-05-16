@@ -4,6 +4,8 @@ import {
   ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { usePlayer } from '../contexts/PlayerContext';
@@ -402,6 +404,7 @@ function TabBar({ activeTab, onSelect, counts }: {
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: string, params: any) => void }) {
+  const navigation = useNavigation<any>();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [episodeLimit, setEpisodeLimit] = useState(EPISODES_PER_PAGE);
@@ -467,7 +470,14 @@ export default function SearchScreen({ onNavigate }: { onNavigate?: (screen: str
     >
       {/* Header */}
       <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>Search</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          {navigation.canGoBack() && (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10, padding: 4 }}>
+              <Ionicons name="chevron-back" size={26} color="#fff" />
+            </TouchableOpacity>
+          )}
+          <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Search</Text>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E1E1E',
           borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}>
           <Text style={{ color: '#888', fontSize: 16 }}>🔍</Text>

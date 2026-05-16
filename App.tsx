@@ -31,6 +31,7 @@ import FriendsScreen from './src/screens/FriendsScreen';
 import CreatorProfileScreen from './src/screens/CreatorProfileScreen';
 import GameFeedScreen from './src/screens/GameFeedScreen';
 import PodcastClaimScreen from './src/screens/PodcastClaimScreen';
+import SearchScreen from './src/screens/SearchScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -116,6 +117,12 @@ function MainApp() {
         <Stack.Screen name="Friends" component={FriendsScreen} />
         <Stack.Screen name="GameFeed" component={GameFeedScreen} />
         <Stack.Screen name="NowPlaying" component={NowPlayingScreen} />
+        <Stack.Screen
+          name="Search"
+          children={({ navigation }: any) => (
+            <SearchScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />
+          )}
+        />
       </Stack.Navigator>
       {miniPlayerVisible && <MiniPlayer />}
     </NavigationContainer>
