@@ -281,6 +281,25 @@ export default function CreatorProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Claim CTA — shown when show is not yet approved */}
+      {profile.claim_status !== 'approved' && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Tabs', { screen: 'Creator' })}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            marginHorizontal: 16, marginBottom: 16, paddingVertical: 12, paddingHorizontal: 16,
+            backgroundColor: '#1A1A1A', borderRadius: 12,
+            borderWidth: 1, borderColor: '#2A2A2A',
+          }}
+        >
+          <Ionicons name="mic-outline" size={16} color="#888" />
+          <Text style={{ color: '#888', fontSize: 14 }}>
+            Is this your podcast?{' '}
+            <Text style={{ color: '#fff', fontWeight: '700' }}>Claim it.</Text>
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Tab switcher — only shown to the claimed owner */}
       {isClaimedOwner ? (
         <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: '#1A1A1A' }}>
