@@ -5,7 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TrackPlayer from 'react-native-track-player';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { GameVoicesLogo } from './src/components/GameVoicesLogo';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
@@ -128,7 +129,7 @@ function AppContent() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>GameVoices</Text>
+        <GameVoicesLogo size={100} />
       </View>
     );
   }

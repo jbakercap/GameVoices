@@ -75,17 +75,13 @@ export function usePersonProfile(showId: string | undefined) {
         }
       }
 
-      // 5. Play counts (from listen history — may be RLS-scoped to current user)
+      // 5. Play counts — global via RPC (bypasses RLS)
       const playCountMap = new Map<string, number>();
       if (episodeIds.length > 0) {
         const { data: playRows } = await supabase
-          .from('user_library')
-          .select('episode_id')
-          .in('episode_id', episodeIds)
-          .eq('item_type', 'listen');
+          .rpc('get_episode_play_counts', { episode_ids: episodeIds });
         for (const row of playRows || []) {
-          const id = (row as any).episode_id;
-          playCountMap.set(id, (playCountMap.get(id) || 0) + 1);
+          playCountMap.set(row.episode_id, Number(row.play_count));
         }
       }
 
