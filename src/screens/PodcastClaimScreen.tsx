@@ -43,20 +43,16 @@ function useShowsSearch(query: string) {
   return useQuery({
     queryKey: ['shows-claim-search', query],
     queryFn: async (): Promise<Show[]> => {
-      let q = supabase
+      const { data, error } = await supabase
         .from('shows')
         .select('id, title, publisher, artwork_url, episode_count, claim_status, claimed_by_user_id')
+        .ilike('title', `%${query.trim()}%`)
         .order('title', { ascending: true })
         .limit(50);
-
-      if (query.trim()) {
-        q = q.ilike('title', `%${query.trim()}%`);
-      }
-
-      const { data, error } = await q;
       if (error) throw error;
       return (data as Show[]) || [];
     },
+    enabled: query.trim().length > 0,
     staleTime: 60 * 1000,
   });
 }
@@ -350,22 +346,34 @@ export default function PodcastClaimScreen() {
         </View>
       </View>
 
-      {/* Column headers */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
-        <Text style={{ color: '#444', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6, flex: 1 }}>
-          Podcast · {isLoading ? '…' : `${shows.length} results`}
-        </Text>
-        <Text style={{ color: '#444', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 }}>Status</Text>
-      </View>
+      {/* Column headers — only shown when there are results */}
+      {debouncedSearch.trim().length > 0 && shows.length > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+          <Text style={{ color: '#444', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6, flex: 1 }}>
+            Podcast · {isLoading ? '…' : `${shows.length} results`}
+          </Text>
+          <Text style={{ color: '#444', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 }}>Status</Text>
+        </View>
+      )}
 
       {/* List */}
-      {isLoading ? (
+      {!debouncedSearch.trim() ? (
+        <View style={{ alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40 }}>
+          <Ionicons name="search-outline" size={40} color="#333" style={{ marginBottom: 16 }} />
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+            Search for your podcast
+          </Text>
+          <Text style={{ color: '#555', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            Type the name of your show above to find and claim it.
+          </Text>
+        </View>
+      ) : isLoading ? (
         <ActivityIndicator color="#fff" style={{ marginTop: 60 }} />
       ) : shows.length === 0 ? (
         <View style={{ alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 }}>
           <Ionicons name="mic-off-outline" size={40} color="#333" style={{ marginBottom: 12 }} />
           <Text style={{ color: '#555', fontSize: 15, textAlign: 'center' }}>
-            {search ? `No podcasts found for "${search}"` : 'No podcasts found'}
+            No podcasts found for "{debouncedSearch}"
           </Text>
         </View>
       ) : (
