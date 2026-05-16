@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAM_TILE_SIZE = (SCREEN_WIDTH - 48) / 4; // 4 columns with padding
@@ -178,14 +179,8 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
       {/* STEP: WELCOME */}
       {step === 'welcome' && (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-          <View style={{
-            width: 80, height: 80, borderRadius: 20,
-            backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 24,
-          }}>
-            <Text style={{ fontSize: 40 }}>🎙</Text>
-          </View>
-          <Text style={{ color: '#fff', fontSize: 30, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>
+          <GameVoicesLogo size={110} />
+          <Text style={{ color: '#fff', fontSize: 30, fontWeight: 'bold', textAlign: 'center', marginBottom: 12, marginTop: 20 }}>
             Welcome to GameVoices
           </Text>
           <Text style={{ color: '#888', fontSize: 16, textAlign: 'center', lineHeight: 24, marginBottom: 40 }}>

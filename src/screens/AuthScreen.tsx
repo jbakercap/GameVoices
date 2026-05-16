@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
 export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
   const { signIn, signUp } = useAuth();
@@ -40,10 +41,8 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <Text style={{ color: '#FFFFFF', fontSize: 36, fontWeight: 'bold', letterSpacing: -1 }}>
-            GameVoices
-          </Text>
-          <Text style={{ color: '#888', fontSize: 15, marginTop: 6 }}>
+          <GameVoicesLogo size={110} />
+          <Text style={{ color: '#888', fontSize: 15, marginTop: 12 }}>
             Sports podcasts, curated for your teams
           </Text>
         </View>
