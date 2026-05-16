@@ -284,7 +284,7 @@ export default function CreatorProfileScreen() {
       {/* Claim CTA — shown when show is not yet approved */}
       {profile.claim_status !== 'approved' && (
         <TouchableOpacity
-          onPress={() => navigation.navigate('Tabs', { screen: 'Creator' })}
+          onPress={() => navigation.navigate('Tabs', { screen: 'Creator', params: { preselectedShowId: showId } })}
           style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             marginHorizontal: 16, marginBottom: 16, paddingVertical: 12, paddingHorizontal: 16,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   ActivityIndicator, Modal, KeyboardAvoidingView, Platform,
@@ -7,6 +7,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useStartClaim, useMyClaims } from '../hooks/mutations/usePodcastClaim';
@@ -265,10 +266,33 @@ function ShowRow({ show, myClaimStatus, isMyShow, onClaim }: ShowRowProps) {
 
 export default function PodcastClaimScreen() {
   const { user } = useAuth();
+  const route = useRoute<any>();
+  const preselectedShowId: string | undefined = route.params?.preselectedShowId;
+
   const [search, setSearch] = useState('');
   const [claimingShow, setClaimingShow] = useState<Show | null>(null);
   const [successShow, setSuccessShow] = useState<Show | null>(null);
   const debouncedSearch = useDebounce(search, 300);
+
+  const { data: preselectedShow } = useQuery({
+    queryKey: ['show-preselect', preselectedShowId],
+    queryFn: async (): Promise<Show | null> => {
+      const { data } = await supabase
+        .from('shows')
+        .select('id, title, publisher, artwork_url, episode_count, claim_status, claimed_by_user_id')
+        .eq('id', preselectedShowId!)
+        .maybeSingle();
+      return (data as Show) ?? null;
+    },
+    enabled: !!preselectedShowId,
+    staleTime: 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (preselectedShow && !claimingShow) {
+      setClaimingShow(preselectedShow);
+    }
+  }, [preselectedShow]);
 
   const { data: shows = [], isLoading } = useShowsSearch(debouncedSearch);
   const { data: myClaims = [] } = useMyClaims();
