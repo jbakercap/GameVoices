@@ -81,7 +81,11 @@ export function useRecentGames(teamSlugs: string[]) {
 
       const storyByGameId: Record<string, { id: string; episode_count: number }> = {};
       for (const s of storiesData || []) {
-        if (s.game_id) storyByGameId[s.game_id] = { id: s.id, episode_count: s.episode_count };
+        if (!s.game_id) continue;
+        const existing = storyByGameId[s.game_id];
+        if (!existing || s.episode_count > existing.episode_count) {
+          storyByGameId[s.game_id] = { id: s.id, episode_count: s.episode_count };
+        }
       }
 
       // Deduplicate and cap at MAX_GAMES_PER_TEAM per followed team slug
