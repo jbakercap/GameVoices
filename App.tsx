@@ -18,9 +18,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
-import SearchScreen from './src/screens/SearchScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
-import WatchScreen from './src/screens/WatchScreen';
 import StoryDetailScreen from './src/screens/StoryDetailScreen';
 
 import EpisodeScreen from './src/screens/EpisodeScreen';
@@ -31,6 +29,7 @@ import PublicProfileScreen from './src/screens/PublicProfileScreen';
 import FriendsScreen from './src/screens/FriendsScreen';
 import CreatorProfileScreen from './src/screens/CreatorProfileScreen';
 import GameFeedScreen from './src/screens/GameFeedScreen';
+import PodcastClaimScreen from './src/screens/PodcastClaimScreen';
 
 TrackPlayer.registerPlaybackService(() => require('./src/services/trackPlayerService').default);
 
@@ -75,10 +74,9 @@ function TabNavigator({ navigation }: any) {
       tabBarInactiveTintColor: '#555',
       tabBarIcon: ({ color, size }) => {
         const icons: Record<string, string> = {
-          Home: 'home',
-          Clips: 'film-outline',
+          Home: 'home-outline',
           Discover: 'compass-outline',
-          Search: 'search-outline',
+          Creator: 'mic-outline',
           Profile: 'person-outline',
         };
         return <Ionicons name={icons[route.name] as any} size={size} color={color} />;
@@ -88,12 +86,8 @@ function TabNavigator({ navigation }: any) {
         name="Home"
         children={() => <HomeScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
       />
-      <Tab.Screen name="Clips" component={WatchScreen} />
       <Tab.Screen name="Discover" component={BrowseScreen} />
-      <Tab.Screen
-        name="Search"
-        children={() => <SearchScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
-      />
+      <Tab.Screen name="Creator" component={PodcastClaimScreen} />
       <Tab.Screen
         name="Profile"
         component={OwnProfileTab}

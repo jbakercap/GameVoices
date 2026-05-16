@@ -21,6 +21,8 @@ export interface PersonProfileData {
   total_comments: number;
   is_following: boolean;
   episodes: CreatorEpisode[];
+  claim_status: string | null;
+  claimed_by_user_id: string | null;
 }
 
 export function usePersonProfile(showId: string | undefined) {
@@ -34,7 +36,7 @@ export function usePersonProfile(showId: string | undefined) {
       // 1. Show + team
       const { data: show, error: showError } = await supabase
         .from('shows')
-        .select('id, title, artwork_url, teams(primary_color, slug)')
+        .select('id, title, artwork_url, claim_status, claimed_by_user_id, teams(primary_color, slug)')
         .eq('id', showId)
         .maybeSingle();
       if (showError) throw showError;
@@ -138,6 +140,8 @@ export function usePersonProfile(showId: string | undefined) {
         total_comments: totalComments,
         is_following: isFollowing,
         episodes,
+        claim_status: (show as any).claim_status || null,
+        claimed_by_user_id: (show as any).claimed_by_user_id || null,
       };
     },
     enabled: !!showId,

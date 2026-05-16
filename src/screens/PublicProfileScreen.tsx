@@ -31,6 +31,7 @@ import {
   useRemoveFriend,
 } from '../hooks/mutations/useFriendshipMutations';
 import { timeAgo, darkenColor, withAlpha, CommentsSheet, FeedEpisode } from '../components/EpisodeFeedPost';
+import { useClaimedShows } from '../hooks/queries/useClaimedShows';
 import { usePlayer } from '../contexts/PlayerContext';
 import { navigate } from '../lib/navigationRef';
 
@@ -707,6 +708,7 @@ export default function PublicProfileScreen({ overrideUserId }: { overrideUserId
   const teamColors = teams.map((t) => t.primary_color || '#2a2a2a');
 
   const isOwnProfile = user?.id === userId;
+  const { data: claimedShows = [] } = useClaimedShows(userId);
 
   const scrollTo = useCallback((y: number) => {
     scrollRef.current?.scrollTo({ y, animated: true });
@@ -811,15 +813,54 @@ export default function PublicProfileScreen({ overrideUserId }: { overrideUserId
             </TouchableOpacity>
           </View>
 
+          {/* Host of [Show] — shown on any profile with approved claims */}
+          {claimedShows.length > 0 && (
+            <View style={{ gap: 6, width: '100%' }}>
+              {claimedShows.map((show) => (
+                <TouchableOpacity
+                  key={show.id}
+                  onPress={() => navigate('ShowDetail', { showId: show.id })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10,
+                    backgroundColor: '#1A2A1A', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
+                >
+                  <View style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', backgroundColor: '#2A2A2A' }}>
+                    {show.artwork_url ? (
+                      <Image source={{ uri: show.artwork_url }} style={{ width: 32, height: 32 }} contentFit="cover" />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="mic" size={14} color="#555" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#4CAF50', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>Host of</Text>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{show.title}</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           {isOwnProfile ? (
-            <TouchableOpacity
-              onPress={() => navigate('LibraryDetail', { initialTab: 'shows' })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8,
-                backgroundColor: '#1e1e1e', borderWidth: 1, borderColor: '#333',
-                borderRadius: 22, paddingVertical: 10, paddingHorizontal: 22 }}>
-              <Ionicons name="bookmark-outline" size={16} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>My Library</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                onPress={() => navigate('LibraryDetail', { initialTab: 'shows' })}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: '#1e1e1e', borderWidth: 1, borderColor: '#333',
+                  borderRadius: 22, paddingVertical: 10, paddingHorizontal: 22 }}>
+                <Ionicons name="bookmark-outline" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>My Library</Text>
+              </TouchableOpacity>
+              {claimedShows.length === 0 && (
+                <TouchableOpacity
+                  onPress={() => navigate('Tabs', { screen: 'Creator' })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <Ionicons name="mic-outline" size={13} color="#555" />
+                  <Text style={{ color: '#555', fontSize: 13 }}>Are you a creator? <Text style={{ color: '#888', fontWeight: '600' }}>Claim your podcast →</Text></Text>
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <FriendButton targetUserId={userId} />
           )}

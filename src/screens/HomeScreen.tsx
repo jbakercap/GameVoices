@@ -20,6 +20,7 @@ import { useNotifications, useUnreadNotificationCount, AppNotification } from '.
 import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotificationsRead';
 import { useListenHistory } from '../hooks/queries/useListenHistory';
 import { useFollowedShows } from '../hooks/queries/useUserLibrary';
+import { useMyClaims } from '../hooks/mutations/usePodcastClaim';
 
 // ─── Notifications Sheet ──────────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ interface NotificationsSheetProps {
 
 function NotificationsSheet({ visible, onClose, onNavigate }: NotificationsSheetProps) {
   const { data: notifications = [], isLoading } = useNotifications();
+  const { data: myClaims = [] } = useMyClaims();
+  const hasApprovedClaim = (myClaims as any[]).some((c) => c.status === 'approved');
   const SHEET_HEIGHT = Dimensions.get('window').height * 0.75;
 
   return (
@@ -62,6 +65,27 @@ function NotificationsSheet({ visible, onClose, onNavigate }: NotificationsSheet
           <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+            {/* Creator CTA — shown until user has an approved claim */}
+            {!hasApprovedClaim && (
+              <TouchableOpacity
+                onPress={() => { onClose(); setTimeout(() => onNavigate?.('Tabs', { screen: 'Creator' }), 300); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 14,
+                  paddingHorizontal: 20, paddingVertical: 16,
+                  borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#1E1E1E', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Ionicons name="mic-outline" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Are you a podcast creator?</Text>
+                  <Text style={{ color: '#555', fontSize: 12, marginTop: 2 }}>Claim your show on GameVoices to unlock analytics and a verified badge.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#444" />
+              </TouchableOpacity>
+            )}
             {isLoading ? (
               <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
             ) : notifications.length === 0 ? (

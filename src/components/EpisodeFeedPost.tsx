@@ -17,6 +17,9 @@ import { useAddEpisodeComment } from '../hooks/mutations/useAddEpisodeComment';
 import { useToggleCommentLike } from '../hooks/mutations/useToggleCommentLike';
 import { useProfile } from '../hooks/useProfile';
 import { useFriendsWhoListened, ListenerProfile } from '../hooks/queries/useFriendsWhoListened';
+import { useEpisodePinnedCommentId, usePinComment } from '../hooks/mutations/usePinComment';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
 import { formatDurationHuman } from '../lib/formatters';
 
 // ─── Shared episode type ──────────────────────────────────────────────────────
@@ -271,6 +274,26 @@ function EpisodeMenu({ episode, visible, onClose, onNavigate }: EpisodeMenuProps
   );
 }
 
+// ─── Show claimed owner hook ──────────────────────────────────────────────────
+
+function useShowClaimedOwner(showId: string | undefined) {
+  return useQuery({
+    queryKey: ['show-claimed-owner', showId],
+    queryFn: async (): Promise<string | null> => {
+      if (!showId) return null;
+      const { data } = await supabase
+        .from('shows')
+        .select('claim_status, claimed_by_user_id')
+        .eq('id', showId)
+        .maybeSingle();
+      if ((data as any)?.claim_status !== 'approved') return null;
+      return (data as any)?.claimed_by_user_id ?? null;
+    },
+    enabled: !!showId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ─── Comment Row ──────────────────────────────────────────────────────────────
 
 interface CommentRowProps {
@@ -279,9 +302,13 @@ interface CommentRowProps {
   teamColor: string;
   episodeId: string;
   onReply: () => void;
+  claimedOwnerUserId?: string | null;
+  isPinned?: boolean;
+  onLongPress?: () => void;
 }
 
-function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }: CommentRowProps) {
+function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply, claimedOwnerUserId, isPinned, onLongPress }: CommentRowProps) {
+  const isVerifiedCreator = !!claimedOwnerUserId && comment.user_id === claimedOwnerUserId;
   const displayName = comment.profile?.display_name || 'Anonymous';
   const initial = displayName.charAt(0).toUpperCase();
   const avatarSize = isReply ? 28 : 36;
@@ -289,9 +316,20 @@ function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }:
   const commentAuthorId = comment.user_id;
 
   return (
+    <TouchableOpacity
+      activeOpacity={onLongPress ? 0.7 : 1}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+      style={{ paddingLeft: isReply ? 52 : 16, paddingRight: 16, paddingTop: isPinned ? 6 : 10, paddingBottom: 10 }}
+    >
+    {isPinned && (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+        <Ionicons name="pin" size={11} color="#888" />
+        <Text style={{ color: '#888', fontSize: 11, fontWeight: '600' }}>Pinned</Text>
+      </View>
+    )}
     <View style={{
       flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-      paddingLeft: isReply ? 52 : 16, paddingRight: 16, paddingVertical: 10,
     }}>
       <TouchableOpacity
         onPress={() => comment.user_id && navigate('PublicProfile', { userId: comment.user_id })}
@@ -310,6 +348,9 @@ function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }:
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
           <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{displayName}</Text>
+          {isVerifiedCreator && (
+            <Ionicons name="checkmark-circle" size={13} color="#4CAF50" />
+          )}
           <Text style={{ color: '#555', fontSize: 12 }}>{timeAgo(comment.created_at)}</Text>
         </View>
         {renderCommentContent(comment.content, teamColor)}
@@ -329,6 +370,7 @@ function CommentRow({ comment, isReply = false, teamColor, episodeId, onReply }:
         )}
       </TouchableOpacity>
     </View>
+    </TouchableOpacity>
   );
 }
 
@@ -343,16 +385,29 @@ interface CommentsSheetProps {
 
 export function CommentsSheet({ episode, teamColor, visible, onClose }: CommentsSheetProps) {
   const { data: profile } = useProfile();
+  const { data: claimedOwnerUserId } = useShowClaimedOwner(episode?.show_id);
+  const { data: pinnedCommentId } = useEpisodePinnedCommentId(episode?.id ?? '');
+  const pinComment = usePinComment();
   const [comment, setComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string; userId: string } | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
+  const isCreator = !!claimedOwnerUserId && !!profile?.id && profile.id === claimedOwnerUserId;
+
   const { data: allComments = [], isLoading: commentsLoading } = useEpisodeComments(episode?.id ?? '');
   const addComment = useAddEpisodeComment();
 
-  const topLevel = useMemo(() => allComments.filter((c) => !c.parent_id), [allComments]);
+  const topLevel = useMemo(() => {
+    const tl = allComments.filter((c) => !c.parent_id);
+    if (!pinnedCommentId) return tl;
+    return [...tl].sort((a, b) => {
+      if (a.id === pinnedCommentId) return -1;
+      if (b.id === pinnedCommentId) return 1;
+      return 0;
+    });
+  }, [allComments, pinnedCommentId]);
   const repliesMap = useMemo(() => {
     const map = new Map<string, EpisodeComment[]>();
     for (const c of allComments) {
@@ -433,6 +488,22 @@ export function CommentsSheet({ episode, teamColor, visible, onClose }: Comments
     });
   };
 
+  const handleLongPressComment = (commentId: string) => {
+    if (!isCreator || !episode) return;
+    const isPinned = pinnedCommentId === commentId;
+    Alert.alert(
+      isPinned ? 'Unpin comment?' : 'Pin comment?',
+      isPinned ? 'Remove this pinned comment from the top.' : 'Pin this comment to the top for all listeners.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isPinned ? 'Unpin' : 'Pin',
+          onPress: () => pinComment.mutate({ episodeId: episode.id, commentId: isPinned ? null : commentId }),
+        },
+      ]
+    );
+  };
+
   const SHEET_HEIGHT = Dimensions.get('window').height * 0.75;
 
   return (
@@ -472,7 +543,15 @@ export function CommentsSheet({ episode, teamColor, visible, onClose }: Comments
                   const isExpanded = expandedReplies.has(c.id);
                   return (
                     <View key={c.id}>
-                      <CommentRow comment={c} teamColor={teamColor} episodeId={episode.id} onReply={() => startReply(c)} />
+                      <CommentRow
+                        comment={c}
+                        teamColor={teamColor}
+                        episodeId={episode.id}
+                        onReply={() => startReply(c)}
+                        claimedOwnerUserId={claimedOwnerUserId}
+                        isPinned={c.id === pinnedCommentId}
+                        onLongPress={isCreator ? () => handleLongPressComment(c.id) : undefined}
+                      />
                       {replies.length > 0 && (
                         <TouchableOpacity
                           onPress={() => toggleReplies(c.id)}
@@ -485,7 +564,7 @@ export function CommentsSheet({ episode, teamColor, visible, onClose }: Comments
                       )}
                       {isExpanded && replies.map((r) => (
                         <CommentRow key={r.id} comment={r} isReply teamColor={teamColor}
-                          episodeId={episode.id} onReply={() => startReply(c)} />
+                          episodeId={episode.id} onReply={() => startReply(c)} claimedOwnerUserId={claimedOwnerUserId} />
                       ))}
                       <View style={{ height: 1, backgroundColor: '#1A1A1A', marginHorizontal: 16 }} />
                     </View>

@@ -6,14 +6,86 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { usePersonProfile, CreatorEpisode } from '../hooks/queries/usePersonProfile';
+import { usePersonProfile, CreatorEpisode, PersonProfileData } from '../hooks/queries/usePersonProfile';
 import { useFollowShow } from '../hooks/mutations/useFollowShow';
 import { useAuth } from '../contexts/AuthContext';
 import { EpisodeFeedPost, CommentsSheet, FeedEpisode } from '../components/EpisodeFeedPost';
+import { formatDurationHuman } from '../lib/formatters';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SortOption = 'newest' | 'oldest' | 'most_commented' | 'most_played';
+type TabOption = 'episodes' | 'stats';
+
+// ─── Stats Tab ────────────────────────────────────────────────────────────────
+
+function StatsTab({ profile }: { profile: PersonProfileData }) {
+  const topByPlays = [...profile.episodes]
+    .sort((a, b) => b.play_count - a.play_count)
+    .slice(0, 5);
+
+  const topByComments = [...profile.episodes]
+    .sort((a, b) => b.comment_count - a.comment_count)
+    .slice(0, 5);
+
+  const StatCard = ({ label, value }: { label: string; value: string | number }) => (
+    <View style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+      <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800' }}>{value}</Text>
+      <Text style={{ color: '#555', fontSize: 12, marginTop: 4, textAlign: 'center' }}>{label}</Text>
+    </View>
+  );
+
+  const EpisodeStatRow = ({ ep, metric, value }: { ep: CreatorEpisode; metric: string; value: number }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+      <View style={{ width: 36, height: 36, borderRadius: 6, overflow: 'hidden', backgroundColor: '#2A2A2A', flexShrink: 0 }}>
+        {(ep.artwork_url || ep.show_artwork_url) ? (
+          <Image source={{ uri: ep.artwork_url || ep.show_artwork_url! }} style={{ width: 36, height: 36 }} contentFit="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="mic" size={14} color="#555" />
+          </View>
+        )}
+      </View>
+      <Text style={{ color: '#fff', fontSize: 13, flex: 1 }} numberOfLines={1}>{ep.title}</Text>
+      <Text style={{ color: '#888', fontSize: 13, fontWeight: '700' }}>{value.toLocaleString()}</Text>
+    </View>
+  );
+
+  return (
+    <View style={{ padding: 16 }}>
+      {/* Summary cards */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+        <StatCard label="Total Plays" value={profile.total_plays.toLocaleString()} />
+        <StatCard label="Total Comments" value={profile.total_comments.toLocaleString()} />
+        <StatCard label="Followers" value={profile.follower_count.toLocaleString()} />
+      </View>
+
+      {/* Top by plays */}
+      {topByPlays.length > 0 && (
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
+            Top Episodes by Plays
+          </Text>
+          {topByPlays.map(ep => (
+            <EpisodeStatRow key={ep.id} ep={ep} metric="plays" value={ep.play_count} />
+          ))}
+        </View>
+      )}
+
+      {/* Top by comments */}
+      {topByComments.length > 0 && (
+        <View>
+          <Text style={{ color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
+            Top Episodes by Comments
+          </Text>
+          {topByComments.map(ep => (
+            <EpisodeStatRow key={ep.id} ep={ep} metric="comments" value={ep.comment_count} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
 
 // ─── Stat pill ────────────────────────────────────────────────────────────────
 
@@ -74,11 +146,13 @@ export default function CreatorProfileScreen() {
   const followShow = useFollowShow();
 
   const [sort, setSort] = useState<SortOption>('newest');
+  const [activeTab, setActiveTab] = useState<TabOption>('episodes');
   const [commentsEpisode, setCommentsEpisode] = useState<FeedEpisode | null>(null);
   const [commentsColor, setCommentsColor] = useState('#333');
   const [refreshing, setRefreshing] = useState(false);
 
   const teamColor = profile?.team_color || '#333';
+  const isClaimedOwner = !!user && profile?.claimed_by_user_id === user.id && profile?.claim_status === 'approved';
 
   const sortedEpisodes = useMemo((): CreatorEpisode[] => {
     if (!profile) return [];
@@ -151,10 +225,30 @@ export default function CreatorProfileScreen() {
         </Text>
 
         {profile.host_name && (
-          <Text style={{ color: '#666', fontSize: 15, marginTop: 4, textAlign: 'center' }}>
-            {profile.host_name}
-            {profile.host_credentials ? ` · ${profile.host_credentials}` : ''}
-          </Text>
+          profile.claimed_by_user_id ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PublicProfile', { userId: profile.claimed_by_user_id })}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}
+            >
+              <Text style={{ color: '#666', fontSize: 15, textAlign: 'center' }}>
+                {profile.host_name}{profile.host_credentials ? ` · ${profile.host_credentials}` : ''}
+              </Text>
+              {profile.claim_status === 'approved' && (
+                <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: '#666', fontSize: 15, marginTop: 4, textAlign: 'center' }}>
+              {profile.host_name}{profile.host_credentials ? ` · ${profile.host_credentials}` : ''}
+            </Text>
+          )
+        )}
+
+        {profile.claim_status === 'approved' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#1A2A1A', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 }}>
+            <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+            <Text style={{ color: '#4CAF50', fontSize: 12, fontWeight: '700' }}>Verified on GameVoices</Text>
+          </View>
         )}
       </View>
 
@@ -187,10 +281,35 @@ export default function CreatorProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Filter bar */}
-      <View style={{ borderTopWidth: 1, borderColor: '#1A1A1A' }}>
+      {/* Tab switcher — only shown to the claimed owner */}
+      {isClaimedOwner ? (
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: '#1A1A1A' }}>
+          {(['episodes', 'stats'] as TabOption[]).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={{
+                flex: 1, paddingVertical: 13, alignItems: 'center',
+                borderBottomWidth: 2,
+                borderBottomColor: activeTab === tab ? '#fff' : 'transparent',
+              }}
+            >
+              <Text style={{ color: activeTab === tab ? '#fff' : '#555', fontSize: 14, fontWeight: '600', textTransform: 'capitalize' }}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={{ borderTopWidth: 1, borderColor: '#1A1A1A' }} />
+      )}
+
+      {activeTab === 'episodes' && isClaimedOwner && (
         <FilterBar active={sort} onChange={setSort} />
-      </View>
+      )}
+      {!isClaimedOwner && (
+        <FilterBar active={sort} onChange={setSort} />
+      )}
 
       <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
     </View>
@@ -205,7 +324,7 @@ export default function CreatorProfileScreen() {
       </View>
 
       <FlatList
-        data={sortedEpisodes}
+        data={activeTab === 'stats' && isClaimedOwner ? [] : sortedEpisodes}
         keyExtractor={ep => ep.id}
         ListHeaderComponent={ListHeader}
         renderItem={({ item }) => (
@@ -217,10 +336,14 @@ export default function CreatorProfileScreen() {
           />
         )}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-            <Ionicons name="mic-outline" size={36} color="#333" style={{ marginBottom: 12 }} />
-            <Text style={{ color: '#555', fontSize: 15 }}>No episodes yet</Text>
-          </View>
+          activeTab === 'stats' && isClaimedOwner ? (
+            <StatsTab profile={profile} />
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+              <Ionicons name="mic-outline" size={36} color="#333" style={{ marginBottom: 12 }} />
+              <Text style={{ color: '#555', fontSize: 15 }}>No episodes yet</Text>
+            </View>
+          )
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" />}
         contentContainerStyle={{ paddingBottom: 120 }}
