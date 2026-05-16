@@ -16,6 +16,7 @@ import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows'
 import { useBrowsePopularEpisodes, PopularEpisode } from '../hooks/queries/useBrowsePopularEpisodes';
 import { useUserTeams } from '../hooks/useUserTeams';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
+import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -441,7 +442,10 @@ export default function BrowseScreen() {
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
       <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Discover</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+          <GameVoicesLogo size={32} />
+          <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Discover</Text>
+        </View>
         <Text style={{ color: '#888', fontSize: 14, marginTop: 2 }}>Find your next favorite podcast</Text>
       </View>
 
@@ -467,60 +471,6 @@ export default function BrowseScreen() {
         {selectedLeague === 'all' ? (
           // ── All tab ──────────────────────────────────────────────────────────
           <>
-            {/* National Shows */}
-            <SectionShelf
-              title="National Shows"
-              subtitle="The biggest voices in sports"
-              loading={loadingNational}
-            >
-              {(nationalShows || []).map((show: any) => (
-                <ShowCard
-                  key={show.id} show={show}
-                />
-              ))}
-            </SectionShelf>
-
-            {/* My Teams */}
-            <View style={{ marginBottom: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 12 }}>
-                My Teams
-              </Text>
-              {followedSlugs.length === 0 ? (
-                <Text style={{ color: '#888', fontSize: 14, paddingHorizontal: 16 }}>
-                  Pick a sport above to follow teams.
-                </Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-                  {(allTeams || [])
-                    .filter((t: any) => followedSlugs.includes(t.slug))
-                    .map((team: any) => (
-                      <TouchableOpacity key={team.id} onPress={() => handleTeamToggle(team.slug)}
-                        style={{ alignItems: 'center', width: 72 }}>
-                        <View style={{
-                          width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff',
-                          borderWidth: 3, borderColor: team.primary_color || '#FFFFFF',
-                          overflow: 'hidden', marginBottom: 6,
-                          alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <Image source={{ uri: team.logo_url }} style={{ width: 52, height: 52 }} contentFit="contain" />
-                        </View>
-                        <Text style={{ color: '#ccc', fontSize: 11, textAlign: 'center' }} numberOfLines={1}>
-                          {team.short_name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                </ScrollView>
-              )}
-            </View>
-
-            {/* More from your teams */}
-            <ShowDiscoverySections
-              userTeams={userTeams}
-              followedShowIds={followedShowIds}
-              onNavigate={(screen, params) => navigate(screen, params)}
-            />
-
             {/* Scoreboard */}
             {(loadingScoreboard || gameStories.length > 0) && (
               <SectionShelf
@@ -533,13 +483,29 @@ export default function BrowseScreen() {
               </SectionShelf>
             )}
 
+            {/* National Shows */}
+            <SectionShelf
+              title="National Shows"
+              subtitle="The biggest voices in sports"
+              loading={loadingNational}
+            >
+              {(nationalShows || []).map((show: any) => (
+                <ShowCard key={show.id} show={show} />
+              ))}
+            </SectionShelf>
+
+            {/* More from your teams */}
+            <ShowDiscoverySections
+              userTeams={userTeams}
+              followedShowIds={followedShowIds}
+              onNavigate={(screen, params) => navigate(screen, params)}
+            />
+
             {/* Regional Shows */}
             {(loadingRegional || regionalShows.length > 0) && (
               <SectionShelf title="Regional Shows" loading={loadingRegional}>
                 {regionalShows.map((show: any) => (
-                  <ShowCard
-                    key={show.id} show={show}
-                  />
+                  <ShowCard key={show.id} show={show} />
                 ))}
               </SectionShelf>
             )}
@@ -573,6 +539,15 @@ export default function BrowseScreen() {
         ) : (
           // ── Sport tab ─────────────────────────────────────────────────────
           <>
+            {/* Scoreboard */}
+            {(loadingScoreboard || gameStories.length > 0) && (
+              <SectionShelf title="Scoreboard" loading={loadingScoreboard}>
+                {gameStories.map(story => (
+                  <ScoreboardCard key={story.id} story={story} />
+                ))}
+              </SectionShelf>
+            )}
+
             {/* Teams grid */}
             <View style={{ marginBottom: 28 }}>
               <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 16, marginBottom: 16 }}>
@@ -587,9 +562,7 @@ export default function BrowseScreen() {
               loading={loadingShows}
             >
               {(leagueShows || []).map((show: any) => (
-                <ShowCard
-                  key={show.id} show={show}
-                />
+                <ShowCard key={show.id} show={show} />
               ))}
             </SectionShelf>
 
@@ -600,18 +573,7 @@ export default function BrowseScreen() {
                 loading={loadingNational}
               >
                 {(nationalShows || []).map((show: any) => (
-                  <ShowCard
-                    key={show.id} show={show}
-                  />
-                ))}
-              </SectionShelf>
-            )}
-
-            {/* Scoreboard */}
-            {(loadingScoreboard || gameStories.length > 0) && (
-              <SectionShelf title="Scoreboard" loading={loadingScoreboard}>
-                {gameStories.map(story => (
-                  <ScoreboardCard key={story.id} story={story} />
+                  <ShowCard key={show.id} show={show} />
                 ))}
               </SectionShelf>
             )}
