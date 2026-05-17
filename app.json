@@ -13,8 +13,8 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.gamevoices.app",
-      "buildNumber": "3",
+      "bundleIdentifier": "com.anonymous.GameVoices",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
