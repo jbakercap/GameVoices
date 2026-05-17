@@ -5,7 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TrackPlayer from 'react-native-track-player';
-import { View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { GameVoicesLogo } from './src/components/GameVoicesLogo';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -129,27 +130,78 @@ function MainApp() {
   );
 }
 
+function SplashScreen({ isReady, onDone }: { isReady: boolean; onDone: () => void }) {
+  const scale = useRef(new Animated.Value(0.35)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const containerOpacity = useRef(new Animated.Value(1)).current;
+  const mountTime = useRef(Date.now());
+  const exitTriggered = useRef(false);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }),
+      Animated.timing(logoOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || exitTriggered.current) return;
+    exitTriggered.current = true;
+
+    const elapsed = Date.now() - mountTime.current;
+    const remaining = Math.max(0, 900 - elapsed);
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(scale, {
+          toValue: 30,
+          duration: 380,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(containerOpacity, {
+          toValue: 0,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+      ]).start(() => onDone());
+    }, remaining);
+  }, [isReady]);
+
+  return (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFillObject,
+        { backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center', opacity: containerOpacity },
+      ]}
+      pointerEvents="none"
+    >
+      <Animated.View style={{ transform: [{ scale }], opacity: logoOpacity }}>
+        <GameVoicesLogo size={150} />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 function AppContent() {
   const { user, isLoading, needsOnboarding, setNeedsOnboarding } = useAuth();
+  const [splashDone, setSplashDone] = useState(false);
   usePushNotifications();
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' }}>
-        <GameVoicesLogo size={100} />
-      </View>
-    );
-  }
+  const renderContent = () => {
+    if (!user) return <AuthScreen onAuth={() => {}} />;
+    if (needsOnboarding) return <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />;
+    return <MainApp />;
+  };
 
-  if (!user) {
-    return <AuthScreen onAuth={() => {}} />;
-  }
-
-  if (needsOnboarding) {
-    return <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />;
-  }
-
-  return <MainApp />;
+  return (
+    <View style={{ flex: 1, backgroundColor: '#121212' }}>
+      {splashDone && renderContent()}
+      {!splashDone && (
+        <SplashScreen isReady={!isLoading} onDone={() => setSplashDone(true)} />
+      )}
+    </View>
+  );
 }
 
 export default function App() {
