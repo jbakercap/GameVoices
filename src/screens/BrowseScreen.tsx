@@ -109,7 +109,7 @@ function SearchBar() {
       onPress={() => navigate('Search', {})}
       style={{
         flexDirection: 'row', alignItems: 'center',
-        marginHorizontal: 16, marginBottom: 20,
+        marginBottom: 0,
         backgroundColor: '#1E1E1E',
         borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
         borderWidth: 1, borderColor: '#2A2A2A',
@@ -419,7 +419,7 @@ export default function BrowseScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
-      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
+      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 16 }}>
         <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', marginBottom: 16 }}>Discover</Text>
         <SearchBar />
       </View>

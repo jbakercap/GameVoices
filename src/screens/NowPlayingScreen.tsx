@@ -16,6 +16,7 @@ import { useToggleCommentLike } from '../hooks/mutations/useToggleCommentLike';
 import { useProfile } from '../hooks/useProfile';
 import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
 import { navigate } from '../lib/navigationRef';
+import { fetchNextEpisode } from '../hooks/queries/useNextEpisode';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ export default function NowPlayingScreen() {
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [nextLoading, setNextLoading] = useState(false);
 
   const isCurrentEpisode = currentEpisode?.id === episodeId;
 
@@ -307,6 +309,32 @@ export default function NowPlayingScreen() {
   };
 
   const handleShare = () => Share.share({ message: `${title} — ${showTitle}` });
+
+  const handleNext = useCallback(async () => {
+    if (!currentEpisode || nextLoading) return;
+    const teamSlugs = profile?.topic_slugs || [];
+    setNextLoading(true);
+    try {
+      const next = await fetchNextEpisode(currentEpisode.id, teamSlugs);
+      if (next) {
+        await playEpisode({
+          id: next.id,
+          title: next.title,
+          showTitle: next.shows?.title || '',
+          artworkUrl: next.artwork_url || undefined,
+          audioUrl: next.audio_url,
+          durationSeconds: next.duration_seconds || undefined,
+          teamColor: (next.shows?.teams as any)?.primary_color || undefined,
+          showId: next.show_id,
+        });
+        navigation.replace('NowPlaying', { episodeId: next.id, autoplay: true });
+      } else {
+        Alert.alert('No episodes found', 'No new episodes from your teams or leagues in the last 24 hours.');
+      }
+    } finally {
+      setNextLoading(false);
+    }
+  }, [currentEpisode, nextLoading, profile, playEpisode, navigation]);
 
   // ── Render comment item ──
   const renderComment = useCallback(({ item }: { item: EpisodeComment }) => {
@@ -497,9 +525,13 @@ export default function NowPlayingScreen() {
               <Text style={{ color: isCurrentEpisode ? '#888' : '#444', fontSize: 10, marginTop: 1 }}>30</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleShare}
+            <TouchableOpacity onPress={handleNext}
+              disabled={nextLoading}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="share-outline" size={24} color="#fff" />
+              {nextLoading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Ionicons name="play-skip-forward" size={26} color={isCurrentEpisode ? '#fff' : '#555'} />
+              }
             </TouchableOpacity>
           </View>
         </View>

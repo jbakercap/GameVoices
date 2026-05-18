@@ -21,6 +21,7 @@ import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotification
 import { useListenHistory } from '../hooks/queries/useListenHistory';
 import { useFollowedShows } from '../hooks/queries/useUserLibrary';
 import { useMyClaims } from '../hooks/mutations/usePodcastClaim';
+import { useRelatedEpisodes, RelatedEpisode } from '../hooks/queries/useRelatedEpisodes';
 
 // ─── Notifications Sheet ──────────────────────────────────────────────────────
 
@@ -241,6 +242,67 @@ function FollowedShowsShelf({ onNavigate }: { onNavigate?: (screen: string, para
   );
 }
 
+// ─── Related Shows Shelf ──────────────────────────────────────────────────────
+
+function RelatedShowsShelf({ episodes, onNavigate }: { episodes: RelatedEpisode[]; onNavigate?: (screen: string, params: any) => void }) {
+  const { playEpisode } = usePlayer();
+
+  if (episodes.length === 0) return null;
+
+  return (
+    <View style={{ paddingTop: 16, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
+      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 }}>
+        For You
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 16 }}>
+        {episodes.map((ep) => {
+          const artwork = ep.artwork_url || ep.shows?.artwork_url;
+          return (
+            <TouchableOpacity
+              key={ep.id}
+              onPress={() => playEpisode({
+                id: ep.id,
+                title: ep.title,
+                showTitle: ep.shows?.title || '',
+                artworkUrl: artwork || undefined,
+                audioUrl: ep.audio_url,
+                durationSeconds: ep.duration_seconds || undefined,
+                teamColor: ep.shows?.teams?.primary_color || undefined,
+                showId: ep.show_id,
+              })}
+              style={{ width: 110 }}
+            >
+              <View style={{ width: 110, height: 110, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+                {artwork ? (
+                  <Image source={{ uri: artwork }} style={{ width: 110, height: 110 }} contentFit="cover" />
+                ) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="mic" size={28} color="#555" />
+                  </View>
+                )}
+                <View style={{
+                  position: 'absolute', bottom: 6, right: 6,
+                  width: 28, height: 28, borderRadius: 14,
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+                </View>
+              </View>
+              <Text style={{ color: '#666', fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
+                {ep.shows?.title}
+              </Text>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }} numberOfLines={2}>
+                {ep.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function FeedEmpty({ hasTeams, onFollowTeams }: { hasTeams: boolean; onFollowTeams: () => void }) {
@@ -294,6 +356,7 @@ export default function HomeScreen({ onNavigate }: {
   const { data: teams } = useTeamsBySlug(teamSlugs);
   const { data: userTeams = [] } = useUserTeams();
   const { data: rawEpisodes = [], isLoading: feedLoading } = useRecentTeamEpisodes(teamSlugs);
+  const { data: relatedEpisodes = [] } = useRelatedEpisodes(teamSlugs);
 
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -350,21 +413,25 @@ export default function HomeScreen({ onNavigate }: {
     setRefreshing(false);
   }, [queryClient]);
 
-  type FeedItem = { type: 'episode'; data: FeedEpisode } | { type: 'followed-shows-shelf' };
+  type FeedItem = { type: 'episode'; data: FeedEpisode } | { type: 'followed-shows-shelf' } | { type: 'related-shows-shelf' };
 
   const feedItems = useMemo((): FeedItem[] => {
     const episodeItems: FeedItem[] = episodes.map(ep => ({ type: 'episode' as const, data: ep }));
-    if (episodeItems.length > 4) {
-      episodeItems.splice(4, 0, { type: 'followed-shows-shelf' as const });
-    } else if (episodeItems.length > 0) {
-      episodeItems.push({ type: 'followed-shows-shelf' as const });
-    }
+    // Insert FollowedShowsShelf after 4th episode
+    const followedPos = Math.min(4, episodeItems.length);
+    episodeItems.splice(followedPos, 0, { type: 'followed-shows-shelf' as const });
+    // Insert RelatedShowsShelf 4 episodes after FollowedShowsShelf
+    const relatedPos = Math.min(followedPos + 5, episodeItems.length);
+    episodeItems.splice(relatedPos, 0, { type: 'related-shows-shelf' as const });
     return episodeItems;
   }, [episodes]);
 
   const renderPost = useCallback(({ item }: { item: FeedItem }) => {
     if (item.type === 'followed-shows-shelf') {
       return <FollowedShowsShelf onNavigate={onNavigate} />;
+    }
+    if (item.type === 'related-shows-shelf') {
+      return <RelatedShowsShelf episodes={relatedEpisodes} onNavigate={onNavigate} />;
     }
     const teamColor = teamColorMap[item.data.team_slug || ''] || '#1E2A3A';
     const teamShortName = teamNameMap[item.data.team_slug || ''];
@@ -377,7 +444,7 @@ export default function HomeScreen({ onNavigate }: {
         onNavigate={onNavigate}
       />
     );
-  }, [teamColorMap, teamNameMap, onNavigate]);
+  }, [teamColorMap, teamNameMap, onNavigate, relatedEpisodes]);
 
   const ListHeader = useMemo(() => (
     <>
@@ -465,7 +532,7 @@ export default function HomeScreen({ onNavigate }: {
       {/* ── Feed ── */}
       <FlatList
         data={feedItems}
-        keyExtractor={(item) => item.type === 'followed-shows-shelf' ? 'followed-shows-shelf' : item.data.id}
+        keyExtractor={(item) => item.type === 'followed-shows-shelf' ? 'followed-shows-shelf' : item.type === 'related-shows-shelf' ? 'related-shows-shelf' : item.data.id}
         renderItem={renderPost}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={
