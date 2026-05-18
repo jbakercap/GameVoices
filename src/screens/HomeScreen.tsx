@@ -21,7 +21,6 @@ import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotification
 import { useListenHistory } from '../hooks/queries/useListenHistory';
 import { useFollowedShows } from '../hooks/queries/useUserLibrary';
 import { useMyClaims } from '../hooks/mutations/usePodcastClaim';
-import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
 // ─── Notifications Sheet ──────────────────────────────────────────────────────
 
@@ -417,9 +416,9 @@ export default function HomeScreen({ onNavigate }: {
       }}>
         <TouchableOpacity
           onPress={() => setTeamPickerOpen(true)}
-          style={{ alignItems: 'center', justifyContent: 'center' }}
+          style={{ alignItems: 'center', justifyContent: 'center', padding: 4 }}
         >
-          <GameVoicesLogo size={42} />
+          <Ionicons name="menu" size={28} color="#fff" />
         </TouchableOpacity>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>

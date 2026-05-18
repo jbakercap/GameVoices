@@ -14,7 +14,6 @@ import { useBrowseGameStories, GameStory } from '../hooks/queries/useBrowseGameS
 import { useBrowseRegionalShows } from '../hooks/queries/useBrowseRegionalShows';
 import { useUserTeams } from '../hooks/useUserTeams';
 import { ShowDiscoverySections } from '../components/ShowDiscoverySections';
-import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -421,10 +420,7 @@ export default function BrowseScreen() {
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
       <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <GameVoicesLogo size={32} />
-          <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>Discover</Text>
-        </View>
+        <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', marginBottom: 16 }}>Discover</Text>
         <SearchBar />
       </View>
 
@@ -450,14 +446,7 @@ export default function BrowseScreen() {
         {selectedLeague === 'all' ? (
           // ── All tab ──────────────────────────────────────────────────────────
           <>
-            {/* For You — personalized shelves based on followed teams */}
-            <ShowDiscoverySections
-              userTeams={userTeams}
-              followedShowIds={followedShowIds}
-              onNavigate={(screen, params) => navigate(screen, params)}
-            />
-
-            {/* Recent Games — all sports mixed */}
+            {/* Recent Games — first shelf below league tabs */}
             {(loadingScoreboard || gameStories.length > 0) && (
               <SectionShelf title="Recent Games" loading={loadingScoreboard}>
                 {gameStories.map(story => (
@@ -465,6 +454,13 @@ export default function BrowseScreen() {
                 ))}
               </SectionShelf>
             )}
+
+            {/* For You — personalized shelves based on followed teams */}
+            <ShowDiscoverySections
+              userTeams={userTeams}
+              followedShowIds={followedShowIds}
+              onNavigate={(screen, params) => navigate(screen, params)}
+            />
 
             {/* Popular Shows — general/national content */}
             <SectionShelf

@@ -319,12 +319,12 @@ export default function PodcastClaimScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Header */}
-      <View style={{ paddingTop: 56, paddingBottom: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+      <View style={{ paddingTop: 72, paddingBottom: 20, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <GameVoicesLogo size={32} />
           <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800' }}>Creator Hub</Text>
         </View>
-        <Text style={{ color: '#666', fontSize: 14, lineHeight: 20 }}>
+        <Text style={{ color: '#666', fontSize: 14, lineHeight: 20, textAlign: 'center' }}>
           Are you a podcast creator? Search for your show and claim it today to unlock analytics, a verified badge, and more.
         </Text>
       </View>

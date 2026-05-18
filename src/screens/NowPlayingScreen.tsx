@@ -428,13 +428,13 @@ export default function NowPlayingScreen() {
             >
               <View style={{
                 position: 'absolute', left: 0, top: 0, bottom: 0,
-                width: dotLeft, backgroundColor: accentColor, borderRadius: 2,
+                width: dotLeft, backgroundColor: '#fff', borderRadius: 2,
               }} />
               <View style={{
                 position: 'absolute', top: -5,
                 left: Math.max(0, dotLeft - 7),
                 width: 14, height: 14, borderRadius: 7,
-                backgroundColor: accentColor,
+                backgroundColor: '#fff',
               }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -476,7 +476,7 @@ export default function NowPlayingScreen() {
               }}
               style={{
                 width: 52, height: 52, borderRadius: 26,
-                backgroundColor: accentColor,
+                backgroundColor: '#fff',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -608,11 +608,11 @@ export default function NowPlayingScreen() {
             disabled={!commentText.trim() || addComment.isPending}
             style={{
               width: 32, height: 32, borderRadius: 16,
-              backgroundColor: commentText.trim() ? accentColor : '#2A2A2A',
+              backgroundColor: commentText.trim() ? '#fff' : '#2A2A2A',
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
+            <Ionicons name="arrow-forward" size={16} color={commentText.trim() ? '#000' : '#fff'} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
