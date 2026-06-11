@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TrackPlayer from 'react-native-track-player';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { GameVoicesLogo } from './src/components/GameVoicesLogo';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -17,6 +17,9 @@ import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
 import MiniPlayer from './src/components/MiniPlayer';
 import NowPlayingScreen from './src/screens/NowPlayingScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import ProfileSetupScreen from './src/screens/ProfileSetupScreen';
+import NotificationsPermissionScreen from './src/screens/NotificationsPermissionScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
@@ -40,11 +43,11 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const queryClient = new QueryClient();
 
-function ProfileTabIcon({ color, size }: { color: string; size: number }) {
+function FriendsTabIcon({ color, size }: { color: string; size: number }) {
   const { data: count = 0 } = usePendingFriendRequestCount();
   return (
     <View style={{ width: size, height: size }}>
-      <Ionicons name="person-outline" size={size} color={color} />
+      <Ionicons name="people-outline" size={size} color={color} />
       {count > 0 && (
         <View style={{
           position: 'absolute', top: -3, right: -5,
@@ -79,6 +82,7 @@ function TabNavigator({ navigation }: any) {
         const icons: Record<string, string> = {
           Home: 'home-outline',
           Discover: 'compass-outline',
+          Friends: 'people-outline',
           Creator: 'mic-outline',
           Profile: 'person-outline',
         };
@@ -90,12 +94,13 @@ function TabNavigator({ navigation }: any) {
         children={() => <HomeScreen onNavigate={(screen: string, params: any) => navigation.navigate(screen, params)} />}
       />
       <Tab.Screen name="Discover" component={BrowseScreen} />
-      <Tab.Screen name="Creator" component={PodcastClaimScreen} />
       <Tab.Screen
-        name="Profile"
-        component={OwnProfileTab}
-        options={{ tabBarIcon: ({ color, size }) => <ProfileTabIcon color={color} size={size} /> }}
+        name="Friends"
+        component={FriendsScreen}
+        options={{ tabBarIcon: ({ color, size }) => <FriendsTabIcon color={color} size={size} /> }}
       />
+      <Tab.Screen name="Creator" component={PodcastClaimScreen} />
+      <Tab.Screen name="Profile" component={OwnProfileTab} />
     </Tab.Navigator>
   );
 }
@@ -184,13 +189,26 @@ function SplashScreen({ isReady, onDone }: { isReady: boolean; onDone: () => voi
 }
 
 function AppContent() {
-  const { user, isLoading, needsOnboarding, setNeedsOnboarding } = useAuth();
+  const {
+    user, isLoading,
+    needsProfileSetup, setNeedsProfileSetup,
+    needsOnboarding, setNeedsOnboarding,
+  } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
+  const [notificationsDone, setNotificationsDone] = useState(false);
   usePushNotifications();
 
   const renderContent = () => {
-    if (!user) return <AuthScreen onAuth={() => {}} />;
-    if (needsOnboarding) return <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />;
+    if (!user) return <WelcomeScreen />;
+    if (needsProfileSetup) {
+      return <ProfileSetupScreen onComplete={() => setNeedsProfileSetup(false)} />;
+    }
+    if (!notificationsDone && needsOnboarding) {
+      return <NotificationsPermissionScreen onComplete={() => setNotificationsDone(true)} />;
+    }
+    if (needsOnboarding) {
+      return <OnboardingScreen onComplete={() => setNeedsOnboarding(false)} />;
+    }
     return <MainApp />;
   };
 

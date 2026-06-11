@@ -149,6 +149,51 @@ export function usePendingFriendRequests() {
   });
 }
 
+// ── Outgoing pending requests from the current user ─────────────────────────
+
+export function useOutgoingFriendRequests() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['friend-requests-outgoing', user?.id],
+    queryFn: async (): Promise<FriendRequest[]> => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('friendships')
+        .select('id, addressee_id, created_at')
+        .eq('requester_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+
+      const addresseeIds = data.map((r) => r.addressee_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', addresseeIds);
+
+      const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+      return data.map((row) => {
+        const profile = profileMap.get(row.addressee_id);
+        return {
+          friendshipId: row.id,
+          requesterId: row.addressee_id,
+          display_name: profile?.display_name ?? null,
+          avatar_url: profile?.avatar_url ?? null,
+          sentAt: row.created_at,
+        };
+      });
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
 // ── Unread friend request count (for badge) ───────────────────────────────────
 
 export function usePendingFriendRequestCount() {

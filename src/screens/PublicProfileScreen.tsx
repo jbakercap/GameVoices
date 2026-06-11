@@ -775,6 +775,12 @@ export default function PublicProfileScreen({ overrideUserId }: { overrideUserId
             {displayName}
           </Text>
 
+          {profile.username ? (
+            <Text style={{ color: '#666', fontSize: 14, marginTop: -2 }}>
+              @{profile.username}
+            </Text>
+          ) : null}
+
           {profile.bio ? (
             <Text style={{ color: '#888', fontSize: 13, textAlign: 'center',
               paddingHorizontal: 24, lineHeight: 18 }}>

@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextValue {
   user: User | null;
@@ -8,9 +12,13 @@ interface AuthContextValue {
   isAdmin: boolean;
   isLoading: boolean;
   needsOnboarding: boolean;
+  needsProfileSetup: boolean;
   setNeedsOnboarding: (value: boolean) => void;
+  setNeedsProfileSetup: (value: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithApple: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -22,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
 
   const clearLocalAuth = async () => {
     try {
@@ -33,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setIsAdmin(false);
     setNeedsOnboarding(false);
+    setNeedsProfileSetup(false);
   };
 
   const validateSessionOrClear = async (nextSession: Session | null) => {
@@ -53,6 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkProfileSetup = async (userId: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, display_name')
+      .eq('user_id', userId)
+      .single();
+    setNeedsProfileSetup(!profile?.username);
+  };
+
   const checkOnboarding = async (userId: string) => {
     const { data: profile } = await supabase
       .from('profiles')
@@ -62,31 +81,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNeedsOnboarding(!profile?.topic_slugs || profile.topic_slugs.length === 0);
   };
 
+  const initializeUser = async (userId: string, session: Session) => {
+    validateSessionOrClear(session);
+    checkAdminRole(userId);
+    await Promise.all([
+      checkProfileSetup(userId),
+      checkOnboarding(userId),
+    ]);
+  };
+
   useEffect(() => {
+    let initialSessionHandled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Skip INITIAL_SESSION — handled by getSession below
+        if (event === 'INITIAL_SESSION') return;
+
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => {
-            validateSessionOrClear(session);
-            checkAdminRole(session.user.id);
-            checkOnboarding(session.user.id);
-          }, 0);
+          initializeUser(session.user.id, session);
         } else {
           setIsAdmin(false);
+          setNeedsProfileSetup(false);
           setNeedsOnboarding(false);
         }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminRole(session.user.id);
-        validateSessionOrClear(session);
-        checkOnboarding(session.user.id);
+        await initializeUser(session.user.id, session);
       }
       setIsLoading(false);
     });
@@ -128,12 +156,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const performOAuthFlow = async (provider: 'google' | 'apple') => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({ path: 'auth/callback' });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+      });
+      if (error) return { error: error as Error };
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          const params = new URLSearchParams(result.url.split('#')[1] || '');
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          }
+        }
+      }
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
+  const signInWithGoogle = () => performOAuthFlow('google');
+  const signInWithApple = () => performOAuthFlow('apple');
+
   const signOut = async () => {
     await clearLocalAuth();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isAdmin, isLoading, needsOnboarding, setNeedsOnboarding, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{
+      user, session, isAdmin, isLoading,
+      needsOnboarding, needsProfileSetup,
+      setNeedsOnboarding, setNeedsProfileSetup,
+      signIn, signUp, signInWithGoogle, signInWithApple, signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   );

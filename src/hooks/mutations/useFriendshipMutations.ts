@@ -27,6 +27,7 @@ export function useSendFriendRequest() {
     },
     onSuccess: (_data, addresseeId) => {
       queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, addresseeId] });
+      queryClient.invalidateQueries({ queryKey: ['friend-requests-outgoing', user?.id] });
     },
   });
 }
@@ -50,6 +51,7 @@ export function useCancelFriendRequest() {
     },
     onSuccess: (_data, addresseeId) => {
       queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, addresseeId] });
+      queryClient.invalidateQueries({ queryKey: ['friend-requests-outgoing', user?.id] });
     },
   });
 }

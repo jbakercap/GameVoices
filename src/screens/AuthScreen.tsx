@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { GameVoicesLogo } from '../components/GameVoicesLogo';
 
-export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
+export default function AuthScreen({ onAuth, onBack }: { onAuth: () => void; onBack?: () => void }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -38,6 +38,13 @@ export default function AuthScreen({ onAuth }: { onAuth: () => void }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+
+        {/* Back button */}
+        {onBack && (
+          <TouchableOpacity onPress={onBack} style={{ position: 'absolute', top: 16, left: 0, padding: 8 }}>
+            <Text style={{ color: '#fff', fontSize: 28 }}>‹</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
