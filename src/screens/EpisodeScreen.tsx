@@ -4,12 +4,14 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEpisode } from '../hooks/queries/useEpisode';
 import { useSaveEpisode } from '../hooks/mutations/useSaveEpisode';
 import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDownloads } from '../contexts/DownloadsContext';
 import { formatDurationHuman, formatRelativeDate, formatDuration } from '../lib/formatters';
 
 function ProgressBar({ position, duration, color = '#FFFFFF' }: { position: number; duration: number; color?: string }) {
@@ -31,11 +33,14 @@ export default function EpisodeScreen() {
   const { playEpisode, currentEpisode, isPlaying, togglePlayPause, progress } = usePlayer();
   const saveEpisode = useSaveEpisode();
   const addToQueue = useAddToQueue();
+  const { downloadEpisode, removeDownload, getDownloadStatus, getDownloadProgress } = useDownloads();
 
   const isCurrent = currentEpisode?.id === episodeId;
   const artwork = episode?.artwork_url || episode?.shows?.artwork_url;
   const teamColor = episode?.shows?.teams?.primary_color || undefined;
   const accentColor = teamColor || '#FFFFFF';
+  const dlStatus = episode ? getDownloadStatus(episode.id) : 'idle';
+  const dlProgress = episode ? getDownloadProgress(episode.id) : 0;
 
   const handlePlay = () => {
     if (!episode) return;
@@ -66,9 +71,12 @@ export default function EpisodeScreen() {
 
   if (!episode) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#121212', padding: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: '#888', fontSize: 16 }}>← Back</Text>
+      <View style={{ flex: 1, backgroundColor: '#121212', paddingTop: 56, paddingHorizontal: 16 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={{ color: '#888', marginTop: 16 }}>Episode not found.</Text>
       </View>
@@ -85,9 +93,12 @@ export default function EpisodeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#121212' }}>
       {/* Back button */}
-      <View style={{ paddingTop: 60, paddingHorizontal: 16, paddingBottom: 8 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: '#888', fontSize: 16 }}>← Back</Text>
+      <View style={{ paddingTop: 56, paddingHorizontal: 16, paddingBottom: 8 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -8 }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -154,18 +165,54 @@ export default function EpisodeScreen() {
 
         {/* Action buttons */}
         {user && (
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+          <View style={{ gap: 12, marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => saveEpisode.mutate({ episodeId: episode.id, isSaved: episode.isSaved || false })}
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: episode.isSaved ? '#FFFFFF' : '#333' }}>
+                <Text style={{ color: episode.isSaved ? '#FFFFFF' : '#aaa', fontSize: 14, fontWeight: '600' }}>
+                  {episode.isSaved ? '★ Saved' : '☆ Save'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => addToQueue.mutate(episode.id)}
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
+                <Text style={{ color: '#aaa', fontSize: 14, fontWeight: '600' }}>+ Queue</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              onPress={() => saveEpisode.mutate({ episodeId: episode.id, isSaved: episode.isSaved || false })}
-              style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: episode.isSaved ? '#FFFFFF' : '#333' }}>
-              <Text style={{ color: episode.isSaved ? '#FFFFFF' : '#aaa', fontSize: 14, fontWeight: '600' }}>
-                {episode.isSaved ? '★ Saved' : '☆ Save'}
+              onPress={() => {
+                if (dlStatus === 'downloaded') {
+                  Alert.alert('Remove Download', 'Delete the offline copy of this episode?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Remove', style: 'destructive', onPress: () => removeDownload(episode.id) },
+                  ]);
+                } else if (dlStatus === 'idle') {
+                  downloadEpisode({
+                    id: episode.id,
+                    title: episode.title,
+                    showTitle: episode.shows?.title || '',
+                    showId: episode.shows?.id,
+                    artworkUrl: artwork || undefined,
+                    audioUrl: episode.audio_url,
+                    durationSeconds: episode.duration_seconds ?? undefined,
+                    teamColor,
+                  });
+                }
+              }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                paddingVertical: 12, borderRadius: 10, backgroundColor: '#1E1E1E',
+                borderWidth: 1, borderColor: dlStatus === 'downloaded' ? accentColor : '#333',
+              }}>
+              <Ionicons
+                name={dlStatus === 'downloaded' ? 'checkmark-circle' : dlStatus === 'downloading' ? 'cloud-download' : 'download-outline'}
+                size={18}
+                color={dlStatus === 'downloaded' ? accentColor : '#aaa'}
+              />
+              <Text style={{ color: dlStatus === 'downloaded' ? accentColor : '#aaa', fontSize: 14, fontWeight: '600' }}>
+                {dlStatus === 'downloaded' ? 'Downloaded' : dlStatus === 'downloading' ? `Downloading ${Math.round(dlProgress * 100)}%` : 'Download for Offline'}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => addToQueue.mutate(episode.id)}
-              style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#1E1E1E', alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
-              <Text style={{ color: '#aaa', fontSize: 14, fontWeight: '600' }}>+ Queue</Text>
             </TouchableOpacity>
           </View>
         )}

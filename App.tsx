@@ -14,6 +14,7 @@ import { usePushNotifications } from './src/hooks/usePushNotifications';
 import { usePendingFriendRequestCount } from './src/hooks/queries/useFriendships';
 import { navigationRef } from './src/lib/navigationRef';
 import { PlayerProvider, usePlayer } from './src/contexts/PlayerContext';
+import { DownloadsProvider } from './src/contexts/DownloadsContext';
 import MiniPlayer from './src/components/MiniPlayer';
 import NowPlayingScreen from './src/screens/NowPlayingScreen';
 import AuthScreen from './src/screens/AuthScreen';
@@ -226,10 +227,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <PlayerProvider>
-          <AppContent />
-          <StatusBar style="light" />
-        </PlayerProvider>
+        <DownloadsProvider>
+          <PlayerProvider>
+            <AppContent />
+            <StatusBar style="light" />
+          </PlayerProvider>
+        </DownloadsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

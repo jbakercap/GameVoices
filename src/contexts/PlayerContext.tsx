@@ -6,6 +6,7 @@ import TrackPlayer, {
   State,
   Capability,
 } from 'react-native-track-player';
+import { useDownloads } from './DownloadsContext';
 
 export interface Episode {
   id: string;
@@ -89,6 +90,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const playbackState = usePlaybackState();
   const progress = useProgress(500);
 
+  const { getLocalUri } = useDownloads();
+
   const [playbackRate, setPlaybackRateState] = useState(1);
 
   const setPlaybackRate = useCallback(async (rate: number) => {
@@ -151,10 +154,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playEpisode = useCallback(async (episode: Episode) => {
     try {
+      const localUri = getLocalUri(episode.id);
+      const audioSource = localUri || episode.audioUrl;
+
       await TrackPlayer.reset();
       await TrackPlayer.add({
         id: episode.id,
-        url: episode.audioUrl,
+        url: audioSource,
         title: episode.title,
         artist: episode.showTitle,
         artwork: episode.artworkUrl,
@@ -179,7 +185,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error playing episode:', error);
     }
-  }, []);
+  }, [getLocalUri]);
 
   const togglePlayPause = useCallback(async () => {
     if (isPlaying) {
@@ -194,7 +200,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const skipForward = useCallback(async () => {
-    await TrackPlayer.seekBy(30);
+    await TrackPlayer.seekBy(15);
   }, []);
 
   const skipBack = useCallback(async () => {

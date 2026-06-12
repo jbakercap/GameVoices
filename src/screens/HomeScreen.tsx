@@ -19,6 +19,7 @@ import { EpisodeFeedPost, FeedEpisode, timeAgo } from '../components/EpisodeFeed
 import { useNotifications, useUnreadNotificationCount, AppNotification } from '../hooks/queries/useNotifications';
 import { useMarkNotificationsRead } from '../hooks/mutations/useMarkNotificationsRead';
 import { useListenHistory } from '../hooks/queries/useListenHistory';
+import { useEpisodesPlayback } from '../hooks/queries/useEpisodesPlayback';
 import { useFollowedShows } from '../hooks/queries/useUserLibrary';
 import { useMyClaims } from '../hooks/mutations/usePodcastClaim';
 import { useRelatedEpisodes, RelatedEpisode } from '../hooks/queries/useRelatedEpisodes';
@@ -150,6 +151,9 @@ function RecentlyPlayedShelf({ onNavigate }: { onNavigate?: (screen: string, par
   const { playEpisode } = usePlayer();
 
   const items = history.filter(h => h.episodes);
+  const episodeIds = items.map(h => h.episodes!.id);
+  const { data: playbackMap = {} } = useEpisodesPlayback(episodeIds);
+
   if (items.length === 0) return null;
 
   return (
@@ -161,6 +165,12 @@ function RecentlyPlayedShelf({ onNavigate }: { onNavigate?: (screen: string, par
         {items.map((item) => {
           const ep = item.episodes!;
           const artwork = ep.artwork_url || ep.shows?.artwork_url;
+          const playback = playbackMap[ep.id];
+          const duration = ep.duration_seconds || 0;
+          const position = playback?.position_seconds || 0;
+          const isUnfinished = duration > 0 && position > 0 && !playback?.completed;
+          const progressPct = isUnfinished ? Math.min(1, position / duration) : 0;
+
           return (
             <TouchableOpacity
               key={item.id}
@@ -171,30 +181,44 @@ function RecentlyPlayedShelf({ onNavigate }: { onNavigate?: (screen: string, par
                 artworkUrl: artwork || undefined,
                 audioUrl: ep.audio_url,
                 durationSeconds: ep.duration_seconds || undefined,
+                startTime: position > 10 ? position : undefined,
               })}
-              style={{ width: 110 }}
+              style={{ width: 140 }}
             >
-              <View style={{ width: 110, height: 110, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+              <View style={{ width: 140, height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
                 {artwork ? (
-                  <Image source={{ uri: artwork }} style={{ width: 110, height: 110 }} contentFit="cover" />
+                  <Image source={{ uri: artwork }} style={{ width: 140, height: 140 }} contentFit="cover" />
                 ) : (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="mic" size={28} color="#555" />
+                    <Ionicons name="mic" size={32} color="#555" />
                   </View>
                 )}
                 <View style={{
-                  position: 'absolute', bottom: 6, right: 6,
-                  width: 28, height: 28, borderRadius: 14,
+                  position: 'absolute', bottom: 8, right: 8,
+                  width: 32, height: 32, borderRadius: 16,
                   backgroundColor: 'rgba(0,0,0,0.65)',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+                  <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
                 </View>
+                {/* Progress bar overlay */}
+                {isUnfinished && (
+                  <View style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    height: 3, backgroundColor: 'rgba(255,255,255,0.2)',
+                  }}>
+                    <View style={{
+                      height: 3, backgroundColor: '#fff',
+                      width: `${progressPct * 100}%` as any,
+                      borderRadius: 1.5,
+                    }} />
+                  </View>
+                )}
               </View>
               <Text style={{ color: '#666', fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
                 {ep.shows?.title}
               </Text>
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }} numberOfLines={2}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
                 {ep.title}
               </Text>
             </TouchableOpacity>
@@ -221,18 +245,18 @@ function FollowedShowsShelf({ onNavigate }: { onNavigate?: (screen: string, para
           <TouchableOpacity
             key={show.id}
             onPress={() => onNavigate?.('ShowDetail', { showId: show.id })}
-            style={{ width: 80, alignItems: 'center' }}
+            style={{ width: 100, alignItems: 'center' }}
           >
-            <View style={{ width: 70, height: 70, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+            <View style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
               {show.artwork_url ? (
-                <Image source={{ uri: show.artwork_url }} style={{ width: 70, height: 70 }} contentFit="cover" />
+                <Image source={{ uri: show.artwork_url }} style={{ width: 90, height: 90 }} contentFit="cover" />
               ) : (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="mic" size={24} color="#555" />
+                  <Ionicons name="mic" size={28} color="#555" />
                 </View>
               )}
             </View>
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>
               {show.title}
             </Text>
           </TouchableOpacity>
@@ -270,29 +294,29 @@ function RelatedShowsShelf({ episodes, onNavigate }: { episodes: RelatedEpisode[
                 teamColor: ep.shows?.teams?.primary_color || undefined,
                 showId: ep.show_id,
               })}
-              style={{ width: 110 }}
+              style={{ width: 140 }}
             >
-              <View style={{ width: 110, height: 110, borderRadius: 10, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+              <View style={{ width: 140, height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
                 {artwork ? (
-                  <Image source={{ uri: artwork }} style={{ width: 110, height: 110 }} contentFit="cover" />
+                  <Image source={{ uri: artwork }} style={{ width: 140, height: 140 }} contentFit="cover" />
                 ) : (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="mic" size={28} color="#555" />
+                    <Ionicons name="mic" size={32} color="#555" />
                   </View>
                 )}
                 <View style={{
-                  position: 'absolute', bottom: 6, right: 6,
-                  width: 28, height: 28, borderRadius: 14,
+                  position: 'absolute', bottom: 8, right: 8,
+                  width: 32, height: 32, borderRadius: 16,
                   backgroundColor: 'rgba(0,0,0,0.65)',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
+                  <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
                 </View>
               </View>
               <Text style={{ color: '#666', fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
                 {ep.shows?.title}
               </Text>
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', lineHeight: 16 }} numberOfLines={2}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
                 {ep.title}
               </Text>
             </TouchableOpacity>
@@ -448,10 +472,66 @@ export default function HomeScreen({ onNavigate }: {
 
   const ListHeader = useMemo(() => (
     <>
+      {/* ── Header row: hamburger + bell ── */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, paddingTop: 56, paddingBottom: 8,
+      }}>
+        <TouchableOpacity
+          onPress={() => setTeamPickerOpen(true)}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="menu" size={28} color="#fff" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleBellPress}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="notifications-outline" size={22} color="#fff" />
+          {unreadCount > 0 && (
+            <View style={{
+              position: 'absolute', top: 4, right: 4,
+              minWidth: 16, height: 16, borderRadius: 8,
+              backgroundColor: '#e11d48',
+              alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+            }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Team circles row ── */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 12 }}>
+        {(teams || []).map((team) => (
+          <TouchableOpacity
+            key={team.id}
+            onPress={() => onNavigate?.('TeamDetail', { teamSlug: team.slug })}
+            style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#fff',
+              overflow: 'hidden', borderWidth: 3, borderColor: team.primary_color || '#333',
+              alignItems: 'center', justifyContent: 'center' }}
+          >
+            {team.logo_url ? (
+              <Image source={{ uri: team.logo_url }} style={{ width: 36, height: 36 }} contentFit="contain" />
+            ) : (
+              <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 11 }}>
+                {team.short_name?.slice(0, 3)}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
+
       <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />
       <RecentlyPlayedShelf onNavigate={onNavigate} />
     </>
-  ), [teamSlugs, onNavigate]);
+  ), [teamSlugs, onNavigate, teams, unreadCount]);
 
   if (profileLoading) {
     return (
@@ -474,60 +554,6 @@ export default function HomeScreen({ onNavigate }: {
         onClose={() => setNotificationsOpen(false)}
         onNavigate={onNavigate}
       />
-
-      {/* ── Sticky header ── */}
-      <View style={{
-        paddingTop: 56, paddingBottom: 10, paddingHorizontal: 16,
-        flexDirection: 'row', alignItems: 'center', gap: 12,
-        backgroundColor: '#121212', borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
-      }}>
-        <TouchableOpacity
-          onPress={() => setTeamPickerOpen(true)}
-          style={{ alignItems: 'center', justifyContent: 'center', padding: 4 }}
-        >
-          <Ionicons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-          {(teams || []).map((team) => (
-            <TouchableOpacity
-              key={team.id}
-              onPress={() => onNavigate?.('TeamDetail', { teamSlug: team.slug })}
-              style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#fff',
-                overflow: 'hidden', borderWidth: 3, borderColor: team.primary_color || '#333',
-                alignItems: 'center', justifyContent: 'center' }}
-            >
-              {team.logo_url ? (
-                <Image source={{ uri: team.logo_url }} style={{ width: 36, height: 36 }} contentFit="contain" />
-              ) : (
-                <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 11 }}>
-                  {team.short_name?.slice(0, 3)}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Bell */}
-        <TouchableOpacity
-          onPress={handleBellPress}
-          style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="notifications-outline" size={22} color="#fff" />
-          {unreadCount > 0 && (
-            <View style={{
-              position: 'absolute', top: 4, right: 4,
-              minWidth: 16, height: 16, borderRadius: 8,
-              backgroundColor: '#e11d48',
-              alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
-            }}>
-              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
 
       {/* ── Feed ── */}
       <FlatList

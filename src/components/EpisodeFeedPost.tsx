@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ScrollView,
   TextInput, KeyboardAvoidingView, Platform, Share,
-  ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { usePlayer } from '../contexts/PlayerContext';
 import { navigate } from '../lib/navigationRef';
 import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
 import { useSaveEpisode } from '../hooks/mutations/useSaveEpisode';
+import { useDownloads } from '../contexts/DownloadsContext';
 import { useEpisodeLikes, useIsEpisodeLiked } from '../hooks/queries/useEpisodeLikes';
 import { useToggleEpisodeLike } from '../hooks/mutations/useToggleEpisodeLike';
 import { useEpisodeComments, useEpisodeCommentCount, EpisodeComment } from '../hooks/queries/useEpisodeComments';
@@ -113,19 +114,19 @@ export function EpisodeCard({ episode, teamColor, isCurrentlyPlaying, isPlaying,
         borderColor: withAlpha(teamColor, 0.75),
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 10,
+        padding: 12,
         gap: 12,
       }}
     >
       <View style={{
-        width: 56, height: 56, borderRadius: 9,
+        width: 72, height: 72, borderRadius: 10,
         backgroundColor: 'rgba(0,0,0,0.3)', overflow: 'hidden', flexShrink: 0,
       }}>
         {artwork ? (
-          <Image source={{ uri: artwork }} style={{ width: 56, height: 56 }} contentFit="cover" />
+          <Image source={{ uri: artwork }} style={{ width: 72, height: 72 }} contentFit="cover" />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="mic" size={22} color="rgba(255,255,255,0.4)" />
+            <Ionicons name="mic" size={26} color="rgba(255,255,255,0.4)" />
           </View>
         )}
       </View>
@@ -138,13 +139,13 @@ export function EpisodeCard({ episode, teamColor, isCurrentlyPlaying, isPlaying,
         </Text>
       </View>
       <View style={{
-        width: 38, height: 38, borderRadius: 19,
+        width: 42, height: 42, borderRadius: 21,
         backgroundColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
         <Ionicons
           name={isCurrentlyPlaying && isPlaying ? 'pause' : 'play'}
-          size={17} color="#fff"
+          size={18} color="#fff"
           style={{ marginLeft: isCurrentlyPlaying && isPlaying ? 0 : 2 }}
         />
       </View>
@@ -232,10 +233,28 @@ interface EpisodeMenuProps {
 function EpisodeMenu({ episode, visible, onClose, onNavigate }: EpisodeMenuProps) {
   const addToQueue = useAddToQueue();
   const saveEpisode = useSaveEpisode();
+  const { downloadEpisode, getDownloadStatus } = useDownloads();
+  const dlStatus = getDownloadStatus(episode.id);
 
   const items = [
     { icon: 'radio-outline' as const, label: 'Go to Episode',
       onPress: () => { onClose(); onNavigate?.('EpisodeDetail', { episodeId: episode.id }); } },
+    { icon: (dlStatus === 'downloaded' ? 'checkmark-circle' : 'download-outline') as 'checkmark-circle' | 'download-outline',
+      label: dlStatus === 'downloaded' ? 'Downloaded' : 'Download for Offline',
+      onPress: () => {
+        if (dlStatus === 'idle') {
+          downloadEpisode({
+            id: episode.id,
+            title: episode.title,
+            showTitle: episode.show_title || '',
+            showId: episode.show_id,
+            artworkUrl: episode.artwork_url || episode.show_artwork_url || undefined,
+            audioUrl: episode.audio_url,
+            durationSeconds: episode.duration_seconds,
+          });
+        }
+        onClose();
+      } },
     { icon: 'share-social-outline' as const, label: 'Share Episode',
       onPress: () => { onClose(); shareEpisode(episode); } },
     { icon: 'list-outline' as const, label: 'Add to Queue',

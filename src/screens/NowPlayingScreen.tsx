@@ -446,26 +446,30 @@ export default function NowPlayingScreen() {
           </View>
 
           {/* Scrubber */}
-          <View style={{ marginTop: 16 }}>
+          <View style={{ marginTop: 20 }}>
             <View
-              style={{ height: 3, backgroundColor: '#2A2A2A', borderRadius: 2, marginBottom: 6, position: 'relative' }}
+              style={{ height: 36, justifyContent: 'center', position: 'relative' }}
               onLayout={e => setTrackWidth(e.nativeEvent.layout.width)}
               onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderTerminationRequest={() => false}
               onResponderRelease={e => handleSeek(e.nativeEvent.locationX)}
               onResponderMove={e => handleSeek(e.nativeEvent.locationX)}
             >
+              <View style={{ height: 3, backgroundColor: '#2A2A2A', borderRadius: 2, position: 'relative' }}>
+                <View style={{
+                  position: 'absolute', left: 0, top: 0, bottom: 0,
+                  width: dotLeft, backgroundColor: '#fff', borderRadius: 2,
+                }} />
+              </View>
               <View style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0,
-                width: dotLeft, backgroundColor: '#fff', borderRadius: 2,
-              }} />
-              <View style={{
-                position: 'absolute', top: -5,
+                position: 'absolute', top: 11,
                 left: Math.max(0, dotLeft - 7),
                 width: 14, height: 14, borderRadius: 7,
                 backgroundColor: '#fff',
               }} />
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
               <Text style={{ color: '#888', fontSize: 12 }}>
                 {isCurrentEpisode ? formatTime(progress.position) : '0:00'}
               </Text>
@@ -478,7 +482,7 @@ export default function NowPlayingScreen() {
           </View>
 
           {/* Controls */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingHorizontal: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, gap: 28 }}>
             <TouchableOpacity onPress={() => isCurrentEpisode && skipBack()}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="arrow-undo" size={28} color={isCurrentEpisode ? '#fff' : '#555'} />
@@ -522,16 +526,7 @@ export default function NowPlayingScreen() {
             <TouchableOpacity onPress={() => isCurrentEpisode && skipForward()}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="arrow-redo" size={28} color={isCurrentEpisode ? '#fff' : '#555'} />
-              <Text style={{ color: isCurrentEpisode ? '#888' : '#444', fontSize: 10, marginTop: 1 }}>30</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleNext}
-              disabled={nextLoading}
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              {nextLoading
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Ionicons name="play-skip-forward" size={26} color={isCurrentEpisode ? '#fff' : '#555'} />
-              }
+              <Text style={{ color: isCurrentEpisode ? '#888' : '#444', fontSize: 10, marginTop: 1 }}>15</Text>
             </TouchableOpacity>
           </View>
         </View>

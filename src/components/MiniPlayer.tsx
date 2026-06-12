@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Image, ActivityIndicator,
   StyleSheet
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayer } from '../contexts/PlayerContext';
-import { navigate } from '../lib/navigationRef';
+import { navigate, navigationRef } from '../lib/navigationRef';
 
 export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
   const { currentEpisode, isPlaying, isLoading, togglePlayPause, progress, dismissPlayer } = usePlayer();
+  const [isOnTabs, setIsOnTabs] = useState(true);
+
+  useEffect(() => {
+    const nav = navigationRef.current;
+    if (!nav) return;
+    const update = () => {
+      const state = nav.getRootState?.();
+      setIsOnTabs(state?.routes?.[state.index]?.name === 'Tabs');
+    };
+    update();
+    const unsubscribe = nav.addListener('state', update);
+    return unsubscribe;
+  }, []);
 
   if (!currentEpisode) return null;
 
@@ -19,7 +32,7 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
   const accentColor = currentEpisode.teamColor || '#FFFFFF';
 
   return (
-    <TouchableOpacity activeOpacity={0.95} onPress={() => navigate('NowPlaying', { episodeId: currentEpisode.id, scrollTo: 'top' })} style={styles.container}>
+    <TouchableOpacity activeOpacity={0.95} onPress={() => navigate('NowPlaying', { episodeId: currentEpisode.id, scrollTo: 'top' })} style={[styles.container, { bottom: isOnTabs ? 90 : 34 }]}>
       {/* Progress bar at top */}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progressPercent}%` as any, backgroundColor: accentColor }]} />
@@ -79,7 +92,7 @@ export default function MiniPlayer({ onPress }: { onPress?: () => void }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 90, // overridden dynamically
     left: 8,
     right: 8,
     backgroundColor: '#282828',
