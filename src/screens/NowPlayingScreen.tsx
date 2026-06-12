@@ -17,6 +17,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useAddToQueue } from '../hooks/mutations/useAddToQueue';
 import { navigate } from '../lib/navigationRef';
 import { fetchNextEpisode } from '../hooks/queries/useNextEpisode';
+import { useDownloads } from '../contexts/DownloadsContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ export default function NowPlayingScreen() {
   const { data: profile } = useProfile();
   const addComment = useAddEpisodeComment();
   const addToQueue = useAddToQueue();
+  const { downloadEpisode, removeDownload, getDownloadStatus, getDownloadProgress } = useDownloads();
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -654,6 +656,38 @@ export default function NowPlayingScreen() {
         }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#444', alignSelf: 'center', marginBottom: 16 }} />
           {[
+            { icon: (() => {
+                const s = getDownloadStatus(episodeId);
+                return s === 'downloaded' ? 'checkmark-circle' : s === 'downloading' ? 'cloud-download' : 'download-outline';
+              })(),
+              label: (() => {
+                const s = getDownloadStatus(episodeId);
+                if (s === 'downloaded') return 'Downloaded';
+                if (s === 'downloading') return `Downloading ${Math.round(getDownloadProgress(episodeId) * 100)}%`;
+                return 'Download for Offline';
+              })(),
+              onPress: () => {
+                const s = getDownloadStatus(episodeId);
+                if (s === 'idle' && episode) {
+                  downloadEpisode({
+                    id: episode.id,
+                    title: episode.title,
+                    showTitle: episode.shows?.title || '',
+                    showId: episode.show_id,
+                    artworkUrl: episode.artwork_url || undefined,
+                    audioUrl: episode.audio_url,
+                    durationSeconds: episode.duration_seconds ?? undefined,
+                    teamColor: episode.shows?.teams?.primary_color || undefined,
+                  });
+                  setShowOptions(false);
+                } else if (s === 'downloaded') {
+                  Alert.alert('Remove Download', 'Delete the offline copy?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Remove', style: 'destructive', onPress: () => removeDownload(episodeId) },
+                  ]);
+                }
+              },
+            },
             { icon: 'share-social-outline', label: 'Share Episode', onPress: () => { setShowOptions(false); handleShare(); } },
             { icon: 'list-outline', label: 'Add to Queue', onPress: () => { addToQueue.mutate(episodeId); setShowOptions(false); } },
             { icon: 'radio-outline', label: 'Go to Show', onPress: () => {
