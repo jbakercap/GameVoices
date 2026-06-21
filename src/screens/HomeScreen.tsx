@@ -23,6 +23,7 @@ import { useEpisodesPlayback } from '../hooks/queries/useEpisodesPlayback';
 import { useFollowedShows } from '../hooks/queries/useUserLibrary';
 import { useMyClaims } from '../hooks/mutations/usePodcastClaim';
 import { useRelatedEpisodes, RelatedEpisode } from '../hooks/queries/useRelatedEpisodes';
+import FriendActivityFeed from '../components/FriendActivityFeed';
 
 // ─── Notifications Sheet ──────────────────────────────────────────────────────
 
@@ -150,7 +151,16 @@ function RecentlyPlayedShelf({ onNavigate }: { onNavigate?: (screen: string, par
   const { data: history = [] } = useListenHistory({ limit: 10 });
   const { playEpisode } = usePlayer();
 
-  const items = history.filter(h => h.episodes);
+  // Deduplicate by episode ID, keeping the most recent listen (already sorted by listened_at DESC)
+  const items = useMemo(() => {
+    const seen = new Set<string>();
+    return history.filter(h => {
+      if (!h.episodes) return false;
+      if (seen.has(h.episodes.id)) return false;
+      seen.add(h.episodes.id);
+      return true;
+    });
+  }, [history]);
   const episodeIds = items.map(h => h.episodes!.id);
   const { data: playbackMap = {} } = useEpisodesPlayback(episodeIds);
 
@@ -385,6 +395,7 @@ export default function HomeScreen({ onNavigate }: {
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'following' | 'friends'>('following');
 
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationsRead();
@@ -432,10 +443,16 @@ export default function HomeScreen({ onNavigate }: {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ['recent-team-episodes'] });
-    await queryClient.invalidateQueries({ queryKey: ['recent-games'] });
+    if (activeTab === 'friends') {
+      await queryClient.invalidateQueries({ queryKey: ['friend-activity'] });
+    } else {
+      await queryClient.invalidateQueries({ queryKey: ['recent-team-episodes'] });
+      await queryClient.invalidateQueries({ queryKey: ['recent-games'] });
+      await queryClient.invalidateQueries({ queryKey: ['listenHistory'] });
+      await queryClient.invalidateQueries({ queryKey: ['episodesPlayback'] });
+    }
     setRefreshing(false);
-  }, [queryClient]);
+  }, [queryClient, activeTab]);
 
   type FeedItem = { type: 'episode'; data: FeedEpisode } | { type: 'followed-shows-shelf' } | { type: 'related-shows-shelf' };
 
@@ -528,10 +545,41 @@ export default function HomeScreen({ onNavigate }: {
 
       <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
 
-      <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />
-      <RecentlyPlayedShelf onNavigate={onNavigate} />
+      {/* ── Tab pills: Following / Friends ── */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+        {(['following', 'friends'] as const).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: isActive ? '#fff' : '#1E1E1E',
+              }}
+            >
+              <Text style={{
+                color: isActive ? '#000' : '#888',
+                fontSize: 14,
+                fontWeight: '600',
+              }}>
+                {tab === 'following' ? 'For You' : 'Friends'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {activeTab === 'following' && (
+        <>
+          <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />
+          <RecentlyPlayedShelf onNavigate={onNavigate} />
+        </>
+      )}
     </>
-  ), [teamSlugs, onNavigate, teams, unreadCount]);
+  ), [teamSlugs, onNavigate, teams, unreadCount, activeTab]);
 
   if (profileLoading) {
     return (
@@ -556,24 +604,37 @@ export default function HomeScreen({ onNavigate }: {
       />
 
       {/* ── Feed ── */}
-      <FlatList
-        data={feedItems}
-        keyExtractor={(item) => item.type === 'followed-shows-shelf' ? 'followed-shows-shelf' : item.type === 'related-shows-shelf' ? 'related-shows-shelf' : item.data.id}
-        renderItem={renderPost}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          feedLoading
-            ? <ActivityIndicator color="#fff" style={{ marginTop: 60 }} />
-            : <FeedEmpty hasTeams={teamSlugs.length > 0} onFollowTeams={() => setTeamPickerOpen(true)} />
-        }
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews
-        windowSize={8}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" colors={['#fff']} />
-        }
-      />
+      {activeTab === 'following' ? (
+        <FlatList
+          data={feedItems}
+          keyExtractor={(item) => item.type === 'followed-shows-shelf' ? 'followed-shows-shelf' : item.type === 'related-shows-shelf' ? 'related-shows-shelf' : item.data.id}
+          renderItem={renderPost}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            feedLoading
+              ? <ActivityIndicator color="#fff" style={{ marginTop: 60 }} />
+              : <FeedEmpty hasTeams={teamSlugs.length > 0} onFollowTeams={() => setTeamPickerOpen(true)} />
+          }
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          windowSize={8}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" colors={['#fff']} />
+          }
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" colors={['#fff']} />
+          }
+        >
+          {ListHeader}
+          <FriendActivityFeed onNavigate={onNavigate} />
+        </ScrollView>
+      )}
     </View>
   );
 }

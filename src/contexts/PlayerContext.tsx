@@ -80,6 +80,7 @@ async function setupPlayer() {
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
+  const currentListenHistoryIdRef = useRef<string | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [miniPlayerVisible, setMiniPlayerVisible] = useState(true);
   const [sleepTimerEndTime, setSleepTimerEndTime] = useState<number | null>(null);
@@ -175,12 +176,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // Record listen event
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        supabase.from('user_listen_history').upsert({
-          user_id: user.id,
-          episode_id: episode.id,
-          listened_at: new Date().toISOString(),
-          duration_listened: 0,
-        }, { onConflict: 'user_id,episode_id' }).then(() => {});
+        const { data: listenData, error: listenError } = await supabase
+          .from('user_listen_history')
+          .insert({
+            user_id: user.id,
+            episode_id: episode.id,
+            listened_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (listenError) {
+          console.error('Failed to record listen history:', listenError);
+          currentListenHistoryIdRef.current = null;
+        } else {
+          currentListenHistoryIdRef.current = listenData?.id ?? null;
+        }
       }
     } catch (error) {
       console.error('Error playing episode:', error);
@@ -207,12 +217,60 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await TrackPlayer.seekBy(-15);
   }, []);
 
+  // ── Persist playback position to user_playback ──────────────────────────────
+  const lastSavedRef = useRef<{ episodeId: string; position: number } | null>(null);
+
+  const savePlaybackPosition = useCallback(async (episodeId: string, position: number, duration: number) => {
+    const rowId = currentListenHistoryIdRef.current;
+    if (!rowId || position < 1) return;
+
+    const last = lastSavedRef.current;
+    if (last && last.episodeId === episodeId && Math.abs(last.position - position) < 2) return;
+
+    const completed = duration > 0 && position >= duration - 10;
+    lastSavedRef.current = { episodeId, position };
+
+    const { error } = await supabase
+      .from('user_listen_history')
+      .update({
+        position_seconds: Math.floor(position),
+        completed,
+      })
+      .eq('id', rowId);
+
+    if (error) {
+      console.error('Failed to save playback position:', error);
+    }
+  }, []);
+
+  // Save every 15 seconds while playing
+  useEffect(() => {
+    if (!isPlaying || !currentEpisode) return;
+    const interval = setInterval(() => {
+      if (progress.position > 0) {
+        savePlaybackPosition(currentEpisode.id, progress.position, progress.duration);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isPlaying, currentEpisode, progress.position, progress.duration, savePlaybackPosition]);
+
+  // Save on pause
+  useEffect(() => {
+    if (!isPlaying && currentEpisode && progress.position > 0) {
+      savePlaybackPosition(currentEpisode.id, progress.position, progress.duration);
+    }
+  }, [isPlaying]);
+
   const dismissPlayer = useCallback(async () => {
+    // Save position before clearing
+    if (currentEpisode && progress.position > 0) {
+      await savePlaybackPosition(currentEpisode.id, progress.position, progress.duration);
+    }
     try {
       await TrackPlayer.reset();
     } catch {}
     setCurrentEpisode(null);
-  }, []);
+  }, [currentEpisode, progress.position, progress.duration, savePlaybackPosition]);
 
   return (
     <PlayerContext.Provider value={{
