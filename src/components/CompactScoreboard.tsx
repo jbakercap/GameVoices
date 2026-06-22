@@ -190,9 +190,10 @@ export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string
   };
 
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: '#222' }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {games.map((game, i) => {
+    <View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 12, gap: 10, paddingVertical: 12 }}>
+        {games.map((game) => {
           const isActive = expandedGameId === game.id;
           const followedIsHome = game.followedTeamSlug === game.home_team_slug;
           const myTeam = followedIsHome ? game.homeTeam : game.awayTeam;
@@ -200,6 +201,7 @@ export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string
           const myScore = followedIsHome ? game.home_score : game.away_score;
           const oppScore = followedIsHome ? game.away_score : game.home_score;
           const myWon = myScore > oppScore;
+          const hasRecaps = (game.episode_count ?? 0) > 0;
           const date = game.event_date
             ? new Date(game.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
             : '';
@@ -210,72 +212,78 @@ export function CompactScoreboard({ teamSlugs, onNavigate }: { teamSlugs: string
               activeOpacity={0.75}
               onPress={() => handleCardPress(game.id)}
               style={{
-                borderRightWidth: i < games.length - 1 ? 1 : 0,
-                borderRightColor: '#222',
-                borderBottomWidth: 2,
-                borderBottomColor: isActive ? '#fff' : 'transparent',
-                backgroundColor: isActive ? '#1A1A1A' : 'transparent',
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                minWidth: 155,
+                width: 160,
+                backgroundColor: isActive ? '#252525' : '#1A1A1A',
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: isActive ? '#444' : '#272727',
+                padding: 13,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ color: '#555', fontSize: 10, fontWeight: '600' }}>
-                  FINAL · {date}
-                </Text>
-                {(game.episode_count ?? 0) > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: seenGameIds.has(game.id) ? '#555' : '#22c55e' }} />
-                    <Text style={{ color: seenGameIds.has(game.id) ? '#555' : '#22c55e', fontSize: 10, fontWeight: '600' }}>
-                      {game.episode_count} ep{game.episode_count === 1 ? '' : 's'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+              {/* Away / My team */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <View style={{
-                  width: 20, height: 20, borderRadius: 10,
-                  backgroundColor: '#fff',
-                  alignItems: 'center', justifyContent: 'center', marginRight: 8,
+                  width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
+                  alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 8,
                 }}>
                   {myTeam?.logo_url ? (
-                    <Image source={{ uri: myTeam.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
+                    <Image source={{ uri: myTeam.logo_url }} style={{ width: 20, height: 20 }} contentFit="contain" />
                   ) : (
-                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: 'bold' }}>
-                      {myTeam?.short_name?.slice(0, 2) || '?'}
+                    <Text style={{ color: '#000', fontSize: 9, fontWeight: 'bold' }}>
+                      {myTeam?.short_name?.slice(0, 3) || '?'}
                     </Text>
                   )}
                 </View>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>
+                <Text style={{ color: myWon ? '#fff' : '#666', fontSize: 13, fontWeight: myWon ? '700' : '400', flex: 1 }} numberOfLines={1}>
                   {myTeam?.short_name || '—'}
                 </Text>
-                <Text style={{ color: myWon ? '#fff' : '#555', fontSize: 13, fontWeight: myWon ? '800' : '400' }}>
+                <Text style={{ color: myWon ? '#fff' : '#555', fontSize: 16, fontWeight: '700' }}>
                   {myScore}
                 </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {/* Home / Opponent */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 11 }}>
                 <View style={{
-                  width: 20, height: 20, borderRadius: 10,
-                  backgroundColor: '#fff',
-                  alignItems: 'center', justifyContent: 'center', marginRight: 8,
+                  width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff',
+                  alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 8,
                 }}>
                   {oppTeam?.logo_url ? (
-                    <Image source={{ uri: oppTeam.logo_url }} style={{ width: 14, height: 14 }} contentFit="contain" />
+                    <Image source={{ uri: oppTeam.logo_url }} style={{ width: 20, height: 20 }} contentFit="contain" />
                   ) : (
-                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: 'bold' }}>
-                      {oppTeam?.short_name?.slice(0, 2) || '?'}
+                    <Text style={{ color: '#000', fontSize: 9, fontWeight: 'bold' }}>
+                      {oppTeam?.short_name?.slice(0, 3) || '?'}
                     </Text>
                   )}
                 </View>
-                <Text style={{ color: '#777', fontSize: 13, flex: 1 }}>
+                <Text style={{ color: myWon ? '#666' : '#fff', fontSize: 13, fontWeight: myWon ? '400' : '700', flex: 1 }} numberOfLines={1}>
                   {oppTeam?.short_name || '—'}
                 </Text>
-                <Text style={{ color: myWon ? '#555' : '#fff', fontSize: 13, fontWeight: myWon ? '400' : '800' }}>
+                <Text style={{ color: myWon ? '#555' : '#fff', fontSize: 16, fontWeight: '700' }}>
                   {oppScore}
                 </Text>
+              </View>
+
+              {/* Footer */}
+              <View style={{ borderTopWidth: 1, borderTopColor: '#272727', paddingTop: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                {hasRecaps ? (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: seenGameIds.has(game.id) ? '#555' : '#22c55e' }} />
+                      <Text style={{ color: seenGameIds.has(game.id) ? '#555' : '#22c55e', fontSize: 11, fontWeight: '600' }}>
+                        {game.episode_count} ep{game.episode_count === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={{ color: '#555', fontSize: 10, fontWeight: '600' }}>
+                        See recaps
+                      </Text>
+                      <Ionicons name={isActive ? 'chevron-up' : 'chevron-down'} size={10} color="#555" />
+                    </View>
+                  </>
+                ) : (
+                  <Text style={{ color: '#3A3A3A', fontSize: 11 }}>FINAL · {date}</Text>
+                )}
               </View>
             </TouchableOpacity>
           );

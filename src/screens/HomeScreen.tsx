@@ -250,23 +250,23 @@ function FollowedShowsShelf({ onNavigate }: { onNavigate?: (screen: string, para
       <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 }}>
         Following
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 16 }}>
         {shows.map((show) => (
           <TouchableOpacity
             key={show.id}
             onPress={() => onNavigate?.('ShowDetail', { showId: show.id })}
-            style={{ width: 100, alignItems: 'center' }}
+            style={{ width: 140 }}
           >
-            <View style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
+            <View style={{ width: 140, height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: '#2A2A2A', marginBottom: 8 }}>
               {show.artwork_url ? (
-                <Image source={{ uri: show.artwork_url }} style={{ width: 90, height: 90 }} contentFit="cover" />
+                <Image source={{ uri: show.artwork_url }} style={{ width: 140, height: 140 }} contentFit="cover" />
               ) : (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="mic" size={28} color="#555" />
+                  <Ionicons name="mic" size={32} color="#555" />
                 </View>
               )}
             </View>
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', lineHeight: 17 }} numberOfLines={2}>
               {show.title}
             </Text>
           </TouchableOpacity>
@@ -574,6 +574,7 @@ export default function HomeScreen({ onNavigate }: {
 
       {activeTab === 'following' && (
         <>
+          <View style={{ height: 1, backgroundColor: '#1A1A1A' }} />
           <CompactScoreboard teamSlugs={teamSlugs} onNavigate={onNavigate} />
           <RecentlyPlayedShelf onNavigate={onNavigate} />
         </>
