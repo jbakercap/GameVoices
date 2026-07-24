@@ -1063,8 +1063,8 @@ export default function PublicProfileScreen({ overrideUserId }: { overrideUserId
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 4 }}>
-              {history.map((ep) => (
-                <TouchableOpacity key={ep.episode_id}
+              {history.map((ep, index) => (
+                <TouchableOpacity key={`${ep.episode_id}-${index}`}
                   onPress={() => navigate('EpisodeDetail', { episodeId: ep.episode_id })}
                   style={{ width: 150, backgroundColor: '#1a1a1a',
                     borderRadius: 12, overflow: 'hidden' }}>
