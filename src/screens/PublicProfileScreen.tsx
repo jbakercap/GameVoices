@@ -479,7 +479,7 @@ function EditProfileModal({ visible, onClose, profile, userId, onSaved }: {
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
 
-    const uploadUrl = `https://mcrgcbbqfnbtfuiypcic.supabase.co/storage/v1/object/avatars/${path}`;
+    const uploadUrl = `https://xcxfkuclwhwtvtdfmshv.supabase.co/storage/v1/object/avatars/${path}`;
     const result = await FileSystem.uploadAsync(uploadUrl, uri, {
       httpMethod: 'POST',
       uploadType: 0, // FileSystemUploadType.BINARY_CONTENT
