@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../lib/supabase';
@@ -182,7 +185,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = () => performOAuthFlow('google');
-  const signInWithApple = () => performOAuthFlow('apple');
+
+  const signInWithApple = async (): Promise<{ error: Error | null }> => {
+    try {
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce
+      );
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+
+      if (!credential.identityToken) {
+        return { error: new Error('No identity token returned from Apple') };
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+
+      return { error: error as Error | null };
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        return { error: null };
+      }
+      return { error: err as Error };
+    }
+  };
 
   const signOut = async () => {
     await clearLocalAuth();

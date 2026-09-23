@@ -13,6 +13,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.gamevoicespro.app",
       "buildNumber": "7",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": ["audio"]
@@ -32,6 +33,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-web-browser",
       "expo-image",
       "expo-video",
