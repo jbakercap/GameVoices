@@ -137,7 +137,7 @@ async function main() {
 
   // ── Process a single ESPN event ──
 
-  async function processEvent(event, sport, leagueLookup) {
+  async function processEvent(event, sport, leagueLookup, queryDate) {
     const competition = event.competitions?.[0];
     if (!competition) return;
     if (event.status?.type?.completed !== true) return;
@@ -163,7 +163,11 @@ async function main() {
 
     const homeScore = extractCompScore(homeComp);
     const awayScore = extractCompScore(awayComp);
-    const eventDate = event.date ? event.date.slice(0, 10) : '';
+    // Use the date we queried ESPN with (YYYYMMDD), not event.date which is UTC
+    // and can roll over to the next day for evening US games
+    const eventDate = queryDate
+      ? `${queryDate.slice(0, 4)}-${queryDate.slice(4, 6)}-${queryDate.slice(6, 8)}`
+      : (event.date ? event.date.slice(0, 10) : '');
     const venue = competition.venue?.fullName || null;
 
     const primaryTeam = homeTeam || awayTeam;
@@ -281,7 +285,7 @@ async function main() {
 
         for (const event of events) {
           try {
-            await processEvent(event, cfg.sport, (id) => leagueMap.get(id));
+            await processEvent(event, cfg.sport, (id) => leagueMap.get(id), dateStr);
           } catch (e) {
             errors.push(`event ${cfg.espnLeague}: ${String(e)}`);
           }
@@ -304,7 +308,7 @@ async function main() {
 
         for (const event of events) {
           try {
-            await processEvent(event, 'college', (id) => collegeEspnMap.get(id));
+            await processEvent(event, 'college', (id) => collegeEspnMap.get(id), dateStr);
           } catch (e) {
             errors.push(`event ${ep.espnLeague}: ${String(e)}`);
           }
