@@ -40,8 +40,8 @@ function parseHeadline(headline: string) {
 function formatEventDate(dateStr: string | null): string {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    const [, month, day] = dateStr.split('-');
+    return `${parseInt(month)}/${parseInt(day)}`;
   } catch {
     return '';
   }
